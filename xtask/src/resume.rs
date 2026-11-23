@@ -46,13 +46,16 @@ fn state() -> Result<()> {
 }
 
 fn recorded_commit() -> Result<String> {
-    let text = util::read(&util::repo_root().join("results/final-pair.json"))?;
+    let root = util::repo_root();
+    let text = util::read(&root.join("results/final-pair.json"))?;
     let doc: serde_json::Value = serde_json::from_str(&text).map_err(|e| format!("results/final-pair.json: {e}"))?;
-    doc["commit"]
+    let name = doc["commit"]
         .as_str()
         .filter(|s| !s.is_empty())
-        .map(str::to_owned)
-        .ok_or_else(|| "results/final-pair.json has no commit".to_owned())
+        .ok_or_else(|| "results/final-pair.json has no commit")?;
+    util::capture(git(Command::new("git").args(["rev-parse", name]), &root))
+        .map(|s| s.trim().to_owned())
+        .map_err(|e| format!("cannot resolve recorded pair `{name}`: {e}"))
 }
 
 fn clean_checkout(commit: &str) -> Result<PathBuf> {

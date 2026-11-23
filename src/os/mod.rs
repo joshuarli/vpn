@@ -13,7 +13,25 @@ mod linux;
 #[cfg(target_os = "linux")]
 pub use linux::{tun_create, tun_read, tun_set_mtu, tun_write};
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(any(target_os = "macos", target_os = "openbsd", target_os = "freebsd", target_os = "netbsd", target_os = "dragonfly"))]
+mod bsd;
+#[cfg(target_os = "macos")]
+mod macos;
+#[cfg(target_os = "macos")]
+pub use macos::{tun_create, tun_read, tun_set_mtu, tun_write};
+#[cfg(any(target_os = "openbsd", target_os = "freebsd", target_os = "netbsd", target_os = "dragonfly"))]
+pub use bsd::{tun_create, tun_read, tun_set_mtu, tun_write};
+#[cfg(target_os = "openbsd")]
+pub use bsd::pledge_runtime;
+
+#[cfg(not(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "openbsd",
+    target_os = "freebsd",
+    target_os = "netbsd",
+    target_os = "dragonfly"
+)))]
 pub use unsupported::{tun_create, tun_read, tun_set_mtu, tun_write};
 
 pub const IFNAMSIZ: usize = 16;
@@ -28,7 +46,14 @@ pub type Fd = c_int;
 /// Interface name as a NUL-terminated byte array, like the C `char[IFNAMSIZ]`.
 pub type IfName = [u8; IFNAMSIZ];
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(not(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "openbsd",
+    target_os = "freebsd",
+    target_os = "netbsd",
+    target_os = "dragonfly"
+)))]
 mod unsupported {
     use super::{Fd, IfName, OsFailure};
 
@@ -98,7 +123,7 @@ mod stdio {
         static SLOT: AtomicPtr<libc::FILE> = AtomicPtr::new(std::ptr::null_mut());
         let s = stream(2, &SLOT);
         // SAFETY: `s` is a valid stream; stderr is unbuffered as in the C program.
-        unsafe { libc::setvbuf(s, ptr::null_mut(), libc::_IONBF, 0) };
+        unsafe { libc::setvbuf(s, std::ptr::null_mut(), libc::_IONBF, 0) };
         s
     }
 }
@@ -174,13 +199,13 @@ pub fn set_errno(value: i32) {
     unsafe { *errno_location() = value };
 }
 
-#[cfg(any(target_os = "linux", target_os = "android"))]
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "dragonfly"))]
 unsafe fn errno_location() -> *mut c_int {
     // SAFETY: no preconditions.
     unsafe { libc::__errno_location() }
 }
 
-#[cfg(any(target_vendor = "apple", target_os = "freebsd", target_os = "dragonfly"))]
+#[cfg(any(target_vendor = "apple", target_os = "freebsd"))]
 unsafe fn errno_location() -> *mut c_int {
     // SAFETY: no preconditions.
     unsafe { libc::__error() }
@@ -393,10 +418,19 @@ fn setsockopt_int_checked(fd: Fd, level: c_int, name: c_int, value: c_int) -> bo
 }
 
 fn lookup(node: Option<&CStr>, service: Option<&CStr>, flags: c_int) -> (c_int, *mut libc::addrinfo) {
+    lookup_family(node, service, flags, libc::AF_UNSPEC)
+}
+
+fn lookup_family(
+    node: Option<&CStr>,
+    service: Option<&CStr>,
+    flags: c_int,
+    family: c_int,
+) -> (c_int, *mut libc::addrinfo) {
     // SAFETY: all-zero bytes are a valid `addrinfo` hint.
     let mut hints: libc::addrinfo = unsafe { mem::zeroed() };
     hints.ai_flags = flags;
-    hints.ai_family = libc::AF_UNSPEC;
+    hints.ai_family = family;
     hints.ai_socktype = libc::SOCK_DGRAM;
     let mut res: *mut libc::addrinfo = ptr::null_mut();
     // SAFETY: the strings are NUL-terminated or null and the out pointer is valid.
@@ -429,7 +463,12 @@ fn join(parts: &[&[u8]]) -> Vec<u8> {
 /// Opens and binds the server socket, printing `Listening on UDP` before the bind. Returns -1
 /// with `errno` set on failure.
 pub fn udp_server_socket(address: Option<&CStr>, port: &CStr) -> Fd {
-    let (eai, res) = lookup(address, Some(port), libc::AI_PASSIVE);
+    let family = if cfg!(any(target_os = "openbsd", target_os = "dragonfly")) && address.is_none() {
+        libc::AF_INET
+    } else {
+        libc::AF_UNSPEC
+    };
+    let (eai, res) = lookup_family(address, Some(port), libc::AI_PASSIVE, family);
     if eai != 0 || !is_inet(res) {
         err(&join(&[b"Unable to create the UDP server socket: [".as_slice(), &gai_strerror(eai), b"]\n"]));
         set_errno(libc::EINVAL);
@@ -510,7 +549,7 @@ pub fn numeric_host(addr: &SockAddr) -> Vec<u8> {
             addr.as_ptr(),
             addr.len,
             host.as_mut_ptr().cast::<c_char>(),
-            NI_MAXHOST as libc::socklen_t,
+            NI_MAXHOST as _,
             ptr::null_mut(),
             0,
             libc::NI_NUMERICHOST | libc::NI_NUMERICSERV,
@@ -531,7 +570,7 @@ pub fn resolve_ip(name: &CStr) -> Result<Vec<u8>, OsFailure> {
                 (*res).ai_addr,
                 (*res).ai_addrlen,
                 ip.as_mut_ptr().cast::<c_char>(),
-                ip.len() as libc::socklen_t,
+                ip.len() as _,
                 ptr::null_mut(),
                 0,
                 libc::NI_NUMERICHOST | libc::NI_NUMERICSERV,

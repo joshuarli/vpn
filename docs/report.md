@@ -36,8 +36,9 @@ cargo xtask resume --verify-final
 `resume --verify-final` creates `.work/verify-final` as a clean detached
 worktree of the recorded commit and reruns `oracle verify`, `test`,
 `crypto-diff --all-available`, `diff --self-check`, `diff --ledger`,
-`diff --all`, and `lab matrix`. The benchmark and comparison steps run as
-informational actions because performance gates are lifted.
+`diff --all`, and `lab matrix`. Add `--with-bench` to also run the benchmark
+and comparison as informational steps; they are skipped by default because
+performance gates are lifted.
 
 ## Acceptance evidence
 

@@ -2,17 +2,19 @@ use crate::util::{self, Result};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-const USAGE: &str = "usage: cargo xtask resume [--verify-final]
+const USAGE: &str = "usage: cargo xtask resume [--verify-final] [--with-bench]
 
 Without arguments, print the campaign Status section and the integration HEAD.
 --verify-final rebuilds the recorded best pair in a clean worktree and reruns
-the correctness gates, then runs the benchmark and comparison as informational
-steps because the owner lifted performance gates.";
+the correctness gates. --with-bench additionally runs the benchmark and
+comparison as informational steps; they are skipped by default because the
+owner lifted performance gates.";
 
 pub fn run(args: &[String]) -> Result<()> {
     match args.first().map(String::as_str) {
         None => state(),
-        Some("--verify-final") if args.len() == 1 => verify_final(),
+        Some("--verify-final") if args.len() == 1 => verify_final(false),
+        Some("--verify-final") if args.len() == 2 && args[1] == "--with-bench" => verify_final(true),
         Some("-h" | "--help") => Err(USAGE.to_owned()),
         Some(other) => Err(format!("resume: unexpected argument `{other}`\n{USAGE}")),
     }
@@ -92,7 +94,7 @@ fn step(dir: &Path, args: &[&str], required: bool) -> Result<bool> {
     }
 }
 
-fn verify_final() -> Result<()> {
+fn verify_final(with_bench: bool) -> Result<()> {
     let commit = recorded_commit()?;
     let dir = clean_checkout(&commit)?;
     eprintln!("resume: verifying pair {commit} in {}", dir.display());
@@ -111,20 +113,27 @@ fn verify_final() -> Result<()> {
         step(&dir, args, true)?;
         passed += 1;
     }
-    let informational: &[&[&str]] = &[
-        &["bench", "--suite", "final", "--candidate", "rust", "--baseline", "c"],
-        &["compare", "--policy", "bench/policy.json"],
-    ];
-    let mut informational_passed = 0usize;
-    for args in informational {
-        if step(&dir, args, false)? {
-            informational_passed += 1;
+    if with_bench {
+        let informational: &[&[&str]] = &[
+            &["bench", "--suite", "final", "--candidate", "rust", "--baseline", "c"],
+            &["compare", "--policy", "bench/policy.json"],
+        ];
+        let mut informational_passed = 0usize;
+        for args in informational {
+            if step(&dir, args, false)? {
+                informational_passed += 1;
+            }
         }
+        println!(
+            "resume --verify-final: PASS ({passed}/{} correctness gates; {informational_passed}/{} performance steps passed, gates lifted)",
+            required.len(),
+            informational.len()
+        );
+    } else {
+        println!(
+            "resume --verify-final: PASS ({passed}/{} correctness gates; performance steps skipped because gates are lifted)",
+            required.len()
+        );
     }
-    println!(
-        "resume --verify-final: PASS ({passed}/{} correctness gates; {informational_passed}/{} performance steps passed, gates lifted)",
-        required.len(),
-        informational.len()
-    );
     Ok(())
 }

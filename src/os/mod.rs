@@ -635,6 +635,7 @@ pub struct Shell;
 
 impl CommandRunner for Shell {
     fn run(&mut self, argv: &[Vec<u8>], silent: bool) -> Result<(), RunError> {
+        set_errno(libc::ENOSPC);
         let owned: Vec<CString> =
             argv.iter().map(|a| CString::new(c_prefix(a)).unwrap_or_default()).collect();
         let mut ptrs: Vec<*const c_char> = owned.iter().map(|c| c.as_ptr()).collect();

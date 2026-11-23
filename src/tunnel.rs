@@ -111,6 +111,7 @@ impl Firewall {
                 true
             }
             FirewallOutcome::Failed { template, errno } => {
+                os::set_errno(errno);
                 os::err(&config::unable_to_run_stderr(template, &os::strerror(errno)));
                 false
             }

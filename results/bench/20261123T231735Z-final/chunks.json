@@ -1,0 +1,371 @@
+[
+  {
+    "error": null,
+    "layer": "crypto",
+    "overlap": true,
+    "pair": 0,
+    "seconds": 30.072948875,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "crypto",
+    "overlap": false,
+    "pair": 1,
+    "seconds": 30.060162334,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "crypto",
+    "overlap": true,
+    "pair": 2,
+    "seconds": 30.093688917,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "crypto",
+    "overlap": true,
+    "pair": 3,
+    "seconds": 30.200571333,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "crypto",
+    "overlap": false,
+    "pair": 4,
+    "seconds": 30.1837375,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "crypto",
+    "overlap": true,
+    "pair": 5,
+    "seconds": 30.17122,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "crypto",
+    "overlap": true,
+    "pair": 6,
+    "seconds": 30.207181291,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "crypto",
+    "overlap": true,
+    "pair": 7,
+    "seconds": 30.56500175,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "crypto",
+    "overlap": true,
+    "pair": 8,
+    "seconds": 30.391203084,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "crypto",
+    "overlap": true,
+    "pair": 9,
+    "seconds": 30.183417792,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "crypto",
+    "overlap": true,
+    "pair": 10,
+    "seconds": 30.658683666,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "crypto",
+    "overlap": true,
+    "pair": 11,
+    "seconds": 30.210468833,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "crypto",
+    "overlap": true,
+    "pair": 12,
+    "seconds": 30.18955925,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "crypto",
+    "overlap": true,
+    "pair": 13,
+    "seconds": 30.174050166,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "crypto",
+    "overlap": true,
+    "pair": 14,
+    "seconds": 30.848688875,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "crypto",
+    "overlap": true,
+    "pair": 15,
+    "seconds": 30.087101791,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "crypto",
+    "overlap": true,
+    "pair": 16,
+    "seconds": 30.123032875,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "crypto",
+    "overlap": true,
+    "pair": 17,
+    "seconds": 30.146657375,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "crypto",
+    "overlap": true,
+    "pair": 18,
+    "seconds": 30.148216625,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "crypto",
+    "overlap": true,
+    "pair": 19,
+    "seconds": 30.134084042,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "packet",
+    "overlap": true,
+    "pair": 0,
+    "seconds": 13.5789375,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "packet",
+    "overlap": true,
+    "pair": 1,
+    "seconds": 13.243713917000001,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "packet",
+    "overlap": true,
+    "pair": 2,
+    "seconds": 13.480060375,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "packet",
+    "overlap": true,
+    "pair": 3,
+    "seconds": 13.128415458,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "packet",
+    "overlap": true,
+    "pair": 4,
+    "seconds": 13.531105417,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "packet",
+    "overlap": true,
+    "pair": 5,
+    "seconds": 13.174398792,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "packet",
+    "overlap": true,
+    "pair": 6,
+    "seconds": 12.865859958,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "packet",
+    "overlap": true,
+    "pair": 7,
+    "seconds": 13.117230458,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "packet",
+    "overlap": true,
+    "pair": 8,
+    "seconds": 13.047954708,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "packet",
+    "overlap": true,
+    "pair": 9,
+    "seconds": 13.075060667,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "packet",
+    "overlap": true,
+    "pair": 10,
+    "seconds": 13.046401084,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "packet",
+    "overlap": true,
+    "pair": 11,
+    "seconds": 14.021319708,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "packet",
+    "overlap": true,
+    "pair": 12,
+    "seconds": 15.155934292,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "packet",
+    "overlap": true,
+    "pair": 13,
+    "seconds": 13.385646,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "packet",
+    "overlap": true,
+    "pair": 14,
+    "seconds": 12.990474042,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "packet",
+    "overlap": true,
+    "pair": 15,
+    "seconds": 13.000847625,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "packet",
+    "overlap": true,
+    "pair": 16,
+    "seconds": 13.013899708,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "packet",
+    "overlap": true,
+    "pair": 17,
+    "seconds": 13.525384709,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "packet",
+    "overlap": true,
+    "pair": 18,
+    "seconds": 14.666101209,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "packet",
+    "overlap": true,
+    "pair": 19,
+    "seconds": 13.632884291,
+    "throttled": false,
+    "timing": true
+  },
+  {
+    "error": null,
+    "layer": "tunnel",
+    "overlap": true,
+    "pair": 0,
+    "seconds": 267.807866292,
+    "throttled": false,
+    "timing": true
+  }
+]

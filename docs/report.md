@@ -19,22 +19,27 @@ correction before any memory-parity claim is made.
 
 | Item | Value |
 | --- | --- |
-| Integration commit | `results/final-pair.json` (refreshed after C1) |
+| Integration commit | `twice-final` tag, recorded in `results/final-pair.json` |
 | Oracle | `391c461697c871e542c7beb44631e77e4c5646dd` in `oracle/upstream` |
 | Oracle `HiAE_amalgamated.c` | SHA-256 `05f745a783317f3e6dc3b0a85a71075eacd1a2a6f82711243e8f6c053c3d6f05` |
 | Graviola | `ad177b4a64f96274a4494e4a65d6d861c3369044` on `twice-hiae` |
 | Toolchain | `nightly-2026-11-09` with `rust-src`, `llvm-tools`, `clippy` |
 | Lab image | `twice-lab:b09cc3ade3a5-nightly-2026-11-09` |
 
-Reproduce the accepted correctness pair from a clean checkout:
+Reproduce the accepted correctness pair from the tagged integration checkout:
 
 ```
 cargo xtask doctor
 cargo xtask resume --verify-final
 ```
 
-`resume --verify-final` creates `.work/verify-final` as a clean detached
-worktree of the recorded commit and reruns `oracle verify`, `test`,
+Run the verifier from that same checkout: the tag records the pair, and the
+fixed verifier code lives in the tagged commit. `oracle verify` checks the
+pinned oracle and Graviola rev from `Cargo.lock` without network; add
+`oracle verify --check-remote` to also compare Graviola's published branch.
+
+`resume --verify-final` creates a fresh `.work/tmp/verify-final-<stamp>` clean
+detached worktree of the recorded commit and reruns `oracle verify`, `test`,
 `crypto-diff --all-available`, `diff --self-check`, `diff --ledger`,
 `diff --all`, and `lab matrix`. Add `--with-bench` to also run the benchmark
 and comparison as informational steps; they are skipped by default because
@@ -45,7 +50,7 @@ performance gates are lifted.
 | Deliverable | Command | Result |
 | --- | --- | --- |
 | Pins, hash, toolchain, container | `cargo xtask doctor` | ok |
-| Unit suite | `cargo xtask test` | 147 passed, 0 failed |
+| Unit suite | `cargo xtask test` | 147 passed, 0 failed on macOS arm64; one BSD-only test is excluded there, so a Linux run reports fewer (`--os` filters OS tests) |
 | HiAE byte parity | `cargo xtask crypto-diff --all-available` | verified for available backends; AES-NI bytes proven under QEMU |
 | Differential oracle | `cargo xtask diff --all` | 1,094 passed, 0 failed |
 | Mutation coverage | `cargo xtask diff --mutation-check` | 82 mutants over 21 areas, 0 survived |
@@ -53,7 +58,7 @@ performance gates are lifted.
 | Compatibility ledger | `cargo xtask diff --ledger` | 19 entries, 0 failed |
 | Real interoperability | `cargo xtask lab matrix` | 8 cells, 422 checks, 0 not passing |
 | Musl release binaries | `cargo xtask lab matrix --rust-target aarch64-unknown-linux-musl`; `cargo xtask lab release --target x86_64-unknown-linux-musl` | AArch64 static-pie: 8 cells, 422 checks, 0 not passing; x86-64 static-pie: native smoke PASS |
-| Native Linux platform | `cargo xtask platform-check` | macOS compile-checked; BSD targets out of scope |
+| Cross-platform compile | `cargo xtask platform-check` | macOS compile-checked; BSD targets compile-checked but runtime is out of scope |
 | Benchmark suite | `cargo xtask bench --suite screen/final` | raw data under `results/bench/` |
 | Comparison | `cargo xtask compare --policy bench/policy.json` | informational; no gate accepted |
 | Clean-checkout reproducibility | `cargo xtask resume --verify-final` | PASS: 7/7 correctness gates from a clean worktree at `twice-final` (`84e0c8e`); later commits are documentation and verifier fixes only |

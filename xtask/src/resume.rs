@@ -49,6 +49,15 @@ fn recorded_commit() -> Result<String> {
     let root = util::repo_root();
     let text = util::read(&root.join("results/final-pair.json"))?;
     let doc: serde_json::Value = serde_json::from_str(&text).map_err(|e| format!("results/final-pair.json: {e}"))?;
+    let oracle = doc["oracle"].as_str().unwrap_or("");
+    if oracle != util::ORACLE_REV {
+        return Err(format!("results/final-pair.json records oracle {oracle:?}, pinned {}", util::ORACLE_REV));
+    }
+    let graviola = doc["graviola"].as_str().unwrap_or("");
+    let locked = util::graviola_locked_rev()?;
+    if graviola != locked {
+        return Err(format!("results/final-pair.json records graviola {graviola:?}, Cargo.lock pins {locked}"));
+    }
     let name = doc["commit"]
         .as_str()
         .filter(|s| !s.is_empty())
@@ -59,15 +68,18 @@ fn recorded_commit() -> Result<String> {
 }
 
 fn clean_checkout(commit: &str) -> Result<PathBuf> {
+    use std::time::{SystemTime, UNIX_EPOCH};
     let root = util::repo_root();
-    let dir = root.join(".work/verify-final");
-    if !dir.join(".git").exists() {
-        eprintln!("resume: creating clean checkout at {}", dir.display());
-        util::status(git(
-            Command::new("git").args(["worktree", "add", "--detach", dir.to_str().ok_or("non-UTF-8 worktree path")?, commit]),
-            &root,
-        ))?;
-    }
+    let stamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|e| format!("system clock is before the epoch: {e}"))?
+        .as_secs();
+    let dir = util::work_dir()?.join(format!("verify-final-{stamp}"));
+    eprintln!("resume: creating clean checkout at {}", dir.display());
+    util::status(git(
+        Command::new("git").args(["worktree", "add", "--detach", dir.to_str().ok_or("non-UTF-8 worktree path")?, commit]),
+        &root,
+    ))?;
     util::status(git(
         Command::new("git").args(["submodule", "update", "--init", "oracle/upstream"]),
         &dir,

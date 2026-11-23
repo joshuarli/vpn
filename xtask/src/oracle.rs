@@ -7,11 +7,15 @@ pub const ORACLE_BINARY: &str = "/target/oracle/twice";
 pub fn run(args: &[String]) -> Result<()> {
     match args.first().map(String::as_str) {
         Some("verify") => {
-            util::no_args("oracle verify", &args[1..])?;
-            for line in verify()? {
+            let mut report = match &args[1..] {
+                [] => verify()?,
+                [flag] if flag == "--check-remote" => verify_with_remote()?,
+                _ => return Err("usage: cargo xtask oracle verify [--check-remote]".to_owned()),
+            };
+            report.push("oracle verify: ok".to_owned());
+            for line in report {
                 println!("{line}");
             }
-            println!("oracle verify: ok");
             Ok(())
         }
         Some("build") => {
@@ -60,6 +64,19 @@ pub fn verify() -> Result<Vec<String>> {
     report.push(format!("license notice: {}", util::FRANK_DENIS_NOTICE));
 
     let locked = util::graviola_locked_rev()?;
+    if let Some(dir) = container::graviola_checkout() {
+        let local = util::capture(Command::new("git").arg("-C").arg(&dir).args(["rev-parse", "HEAD"]))?;
+        if local.trim() != locked {
+            return Err(format!("local graviola checkout is at {}, Cargo.lock pins {locked}", local.trim()));
+        }
+    }
+    report.push(format!("graviola rev: {locked} (pinned by Cargo.lock)"));
+    Ok(report)
+}
+
+fn verify_with_remote() -> Result<Vec<String>> {
+    let mut report = verify()?;
+    let locked = util::graviola_locked_rev()?;
     let remote = util::capture(
         Command::new("git").args(["ls-remote", util::GRAVIOLA_REMOTE, &format!("refs/heads/{}", util::GRAVIOLA_BRANCH)]),
     )?;
@@ -70,7 +87,7 @@ pub fn verify() -> Result<Vec<String>> {
             util::GRAVIOLA_BRANCH
         ));
     }
-    report.push(format!("graviola rev: {locked} (published {})", util::GRAVIOLA_BRANCH));
+    report.push(format!("graviola published {} at {published}", util::GRAVIOLA_BRANCH));
     Ok(report)
 }
 

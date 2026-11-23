@@ -1,0 +1,6 @@
+{"case":{"name":"genkey","role":"tool","argv":["genkey","t.key"],"seed":1}}
+{"ev":"open","flags":0,"path":"/dev/urandom","t_ms":0}
+{"ev":"stdout","text":"Successfully generated 256-bit key file: t.key\n\nUsage:\n  Server: sudo ./twice -k t.key server auto\n  Client: sudo ./twice -k t.key client <server-ip>\n\nImportant: Copy this key file securely to both server and client\n"}
+{"ev":"stderr","text":""}
+{"ev":"file","hex":"c15c0289ec2d0a9167ec8e65a18debbe5e5532fbeea293f80bc942ee9086c171","mode":"0600","path":"t.key"}
+{"code":0,"ev":"exit","t_ms":0}

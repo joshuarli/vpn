@@ -3,22 +3,22 @@
 ## Status
 
 - **Goal:** an exact Rust port of `jedisct1/twice` using HiAE from the `laputa-systems/graviola` fork, proven against the C original, then at performance and memory parity.
-- **Last accepted pair:** none.
-- **Accepted:** G0, H1, H2, T1, S1, T2, T3, B1. **Red:** none. **Parked:** none.
-- **Running:** D1 then X1, I1 then L1, B2-prep (Rust bench arms) in `.work/wt/<lane>`.
-- **Next slice:** B2 after D1, I1, and B2-prep; then O1, O2, C1.
-- **Resume:** read this file, run `git status -sb` and `git worktree list`, then run the acceptance command of each running or next slice.
+- **Last accepted pair:** `c606807` (correctness pair; refreshed after C1 lands).
+- **Accepted:** G0, H1, H2, T1, S1, T2, T3, B1, D1, X1, I1, B2-prep. **Red:** none. **Parked:** O1, O2, O3 (owner lifted performance gates 2026-11-23 and asked to prioritize feature completion).
+- **Running:** C1 closeout; B2 final suite is collecting data with performance gates lifted, so its timing verdicts are informational.
+- **Next slice:** C1 verification and handoff. BSD runtime is out of scope by owner decision 2026-11-23; macOS native runtime remains on **Needs environment** (`sudo` on `m1-max` needs a password).
+- **Resume:** read this file, run `git status -sb` and `git worktree list`, then run `cargo xtask resume --verify-final`.
 
 | Milestone | State |
 | --- | --- |
 | C reference and baseline | G0 accepted: pins, oracle build, lab image |
 | Graviola HiAE byte parity | VERIFIED arm-neon and arm-sha3 native; aesni bytes under QEMU (`ad177b4`) |
-| Rust behavioral parity | not started |
-| Real C/Rust interoperability | not started |
-| Performance parity | not started |
-| Memory parity | not started |
-| Native platform gates | T3: four BSD targets and macOS compile-checked only; native runtime is on **Needs environment** |
-| Stretch improvements | not started |
+| Rust behavioral parity | VERIFIED on primary host: 1,094 diff runs pass, 82 mutants over 21 areas killed, 19 ledger entries reproduced |
+| Real C/Rust interoperability | VERIFIED on primary host: 8 matrix cells, 422 checks, 0 not passing |
+| Performance parity | INCONCLUSIVE: performance gates lifted by owner 2026-11-23; timing verdicts are informational, not accepted |
+| Memory parity | UNVERIFIED: rust-vs-c screen reports implausible RSS deltas and several vmsize/reorder REGRESSIONs; measurement arms need correction before any claim |
+| Native platform gates | Linux native VERIFIED by `lab matrix`; macOS compile-checked only, native runtime on **Needs environment**; BSD out of scope by owner 2026-11-23 |
+| Stretch improvements | parked with O1–O3 when performance gates were lifted |
 
 Gate states are `VERIFIED`, `FAILED`, `BLOCKED`, `INCONCLUSIVE`, and `UNVERIFIED`. Primary-host completion and full-platform completion are reported separately.
 

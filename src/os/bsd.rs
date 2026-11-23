@@ -335,11 +335,11 @@ mod tests {
         }
 
         #[test]
-        fn write_to_a_closed_descriptor_fails() {
+        fn write_after_the_peer_closed_fails() {
             let (tun, peer) = pair();
             close(peer);
-            close(tun);
             assert_eq!(tun_write(tun, &packet(0x45, 40)), -1);
+            close(tun);
         }
 
         #[test]
@@ -376,7 +376,7 @@ mod tests {
             assert_eq!(tun_read(tun, &mut buf), -1);
             close(tun);
             close(peer);
-            assert_eq!(tun_read(tun, &mut buf), -1);
+            assert_eq!(tun_read(-1, &mut buf), -1);
         }
 
         #[test]

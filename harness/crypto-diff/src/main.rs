@@ -13,7 +13,8 @@ const USAGE: &str = "usage: crypto-diff [options]
 
   --backend NAME      arm-neon | arm-sha3 | aesni | vaes (repeatable)
   --all-available     run every backend this host can run; list the rest as skipped
-  --qemu              run x86_64 backends under QEMU (not implemented)
+  --qemu              this process is an x86_64 build running under qemu-x86_64 (bytes only;
+                      `cargo xtask crypto-diff --qemu` builds and launches it)
   --seed N            seed for all generated data (decimal or 0x hex); default is random
   --random-cases N    number of randomized cases per backend (default 3000)
   --case S:M:A:MO:AO  rerun one case: seed:msg_len:ad_len:msg_offset:ad_offset
@@ -104,6 +105,7 @@ mod host {
 struct Options {
     backends: Vec<Backend>,
     all_available: bool,
+    qemu: bool,
     seed: Option<u64>,
     random_cases: usize,
     single_case: Option<Case>,
@@ -121,6 +123,7 @@ fn parse_args(args: &[String]) -> Result<Options, String> {
     let mut o = Options {
         backends: Vec::new(),
         all_available: false,
+        qemu: false,
         seed: None,
         random_cases: 3000,
         single_case: None,
@@ -140,9 +143,7 @@ fn parse_args(args: &[String]) -> Result<Options, String> {
                 );
             }
             "--all-available" => o.all_available = true,
-            "--qemu" => {
-                return Err("--qemu is not implemented yet: the QEMU path for the x86_64 backends is lane H2".into());
-            }
+            "--qemu" => o.qemu = true,
             "--seed" => o.seed = Some(parse_u64(&value("--seed")?)?),
             "--random-cases" => o.random_cases = parse_u64(&value("--random-cases")?)? as usize,
             "--inject-fault" => rs::inject_fault_from_len(parse_u64(&value("--inject-fault")?)? as usize),
@@ -169,6 +170,12 @@ fn parse_args(args: &[String]) -> Result<Options, String> {
     }
     if o.backends.is_empty() && !o.all_available {
         return Err("choose --backend NAME or --all-available".into());
+    }
+    if o.qemu && !cfg!(target_arch = "x86_64") {
+        return Err(format!(
+            "--qemu needs an x86_64 build running under qemu-x86_64, not {}; use `cargo xtask crypto-diff --qemu`",
+            std::env::consts::ARCH
+        ));
     }
     Ok(o)
 }
@@ -311,6 +318,9 @@ fn main() -> ExitCode {
         Rng::new(nanos ^ u64::from(std::process::id()) << 32).next_u64()
     });
     println!("crypto-diff seed {seed:#x} (reproduce with --seed {seed:#x})");
+    if options.qemu {
+        println!("crypto-diff: x86_64 build under QEMU user emulation: byte parity only, no native timing or CPU proof");
+    }
 
     let mut plan = Vec::new();
     for backend in &options.backends {

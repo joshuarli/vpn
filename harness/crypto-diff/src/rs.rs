@@ -6,10 +6,10 @@ pub fn inject_fault_from_len(min_len: usize) {
     FAULT_MIN_LEN.store(min_len, Ordering::Relaxed);
 }
 
-pub const AVAILABLE: bool = cfg!(target_arch = "aarch64");
+pub const AVAILABLE: bool = cfg!(any(target_arch = "aarch64", target_arch = "x86_64"));
 
 pub const UNAVAILABLE_REASON: &str =
-    "graviola::aead::HiAe exists only on aarch64 so far (the x86_64 kernel is lane H2)";
+    "graviola::aead::HiAe exists only on aarch64 and x86_64";
 
 pub struct Hiae(imp::Inner);
 
@@ -40,7 +40,7 @@ impl Hiae {
     }
 }
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
 mod imp {
     pub struct Inner(graviola::aead::HiAe);
 
@@ -67,7 +67,7 @@ mod imp {
     }
 }
 
-#[cfg(not(target_arch = "aarch64"))]
+#[cfg(not(any(target_arch = "aarch64", target_arch = "x86_64")))]
 mod imp {
     pub struct Inner;
 

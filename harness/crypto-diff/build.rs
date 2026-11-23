@@ -16,14 +16,22 @@ fn main() {
         .canonicalize()
         .unwrap_or_else(|e| panic!("pinned oracle source {}: {e}", source.display()));
     println!("cargo:rerun-if-changed={}", source.display());
-    println!("cargo:rerun-if-env-changed=CC");
-    println!("cargo:rerun-if-env-changed=AR");
+    let target = env::var("TARGET").unwrap_or_default().replace('-', "_");
+    let cc_var = format!("CC_{target}");
+    let ar_var = format!("AR_{target}");
+    for var in [cc_var.as_str(), ar_var.as_str(), "CC", "AR"] {
+        println!("cargo:rerun-if-env-changed={var}");
+    }
 
     let out = PathBuf::from(env::var_os("OUT_DIR").unwrap());
     let object = out.join("hiae_c.o");
     let archive = out.join("libhiae_c.a");
-    let cc = env::var("CC").unwrap_or_else(|_| "cc".to_owned());
-    let ar = env::var("AR").unwrap_or_else(|_| "ar".to_owned());
+    let cc = env::var(&cc_var)
+        .or_else(|_| env::var("CC"))
+        .unwrap_or_else(|_| "cc".to_owned());
+    let ar = env::var(&ar_var)
+        .or_else(|_| env::var("AR"))
+        .unwrap_or_else(|_| "ar".to_owned());
 
     run(Command::new(cc)
         .args(["-O2", "-fPIC", "-c"])

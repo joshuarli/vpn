@@ -1,4 +1,4 @@
-use crate::container;
+use crate::container::{self, CONTAINER_GRAVIOLA, CONTAINER_REPO, CONTAINER_TARGET};
 use crate::oracle;
 use crate::util::{self, Result};
 use std::path::{Path, PathBuf};
@@ -9,7 +9,12 @@ const USAGE: &str = "usage: cargo xtask crypto-diff [--graviola DIR] [harness op
 
 --graviola DIR picks the Graviola checkout to test (default: $GRAVIOLA_DIR, then ~/repos/graviola).
 Everything else goes to the harness; run `cargo xtask crypto-diff --help-harness` to list it.
---qemu is not implemented yet.";
+--qemu builds the harness for x86_64-unknown-linux-gnu in the lab container and runs it under
+qemu-x86_64 -cpu max (bytes only; native x86_64 proof is separate). Graviola is mounted from
+the --graviola / $GRAVIOLA_DIR checkout.";
+
+const QEMU_TARGET: &str = "x86_64-unknown-linux-gnu";
+const QEMU_RUNNER: &str = "qemu-x86_64 -cpu max -L /usr/x86_64-linux-gnu";
 
 struct RestoreLock {
     path: PathBuf,
@@ -27,6 +32,7 @@ impl Drop for RestoreLock {
 pub fn run(args: &[String]) -> Result<()> {
     let mut graviola: Option<PathBuf> = None;
     let mut forward: Vec<String> = Vec::new();
+    let mut qemu = false;
     let mut it = args.iter();
     while let Some(arg) = it.next() {
         match arg.as_str() {
@@ -34,9 +40,7 @@ pub fn run(args: &[String]) -> Result<()> {
                 let dir = it.next().ok_or("--graviola needs a directory")?;
                 graviola = Some(PathBuf::from(dir));
             }
-            "--qemu" => {
-                return Err("--qemu is not implemented yet (slice H2)".to_owned());
-            }
+            "--qemu" => qemu = true,
             "-h" | "--help" => {
                 println!("{USAGE}");
                 return Ok(());
@@ -70,9 +74,41 @@ pub fn run(args: &[String]) -> Result<()> {
         original: std::fs::read(&lock).map_err(|e| format!("read {}: {e}", lock.display()))?,
         path: lock,
     };
-    let target = util::work_dir()?.join("crypto-diff-target");
-
     eprintln!("crypto-diff: Graviola at {crate_dir}");
+    let patch = |dir: &str| {
+        format!("patch.\"{}\".graviola.path=\"{dir}\"", util::GRAVIOLA_REMOTE)
+    };
+    if qemu {
+        forward.push("--qemu".to_owned());
+        let dir_str = dir.to_str().ok_or("Graviola path must be UTF-8")?;
+        // SAFETY: xtask is single-threaded here, no other thread reads or writes the environment.
+        unsafe { std::env::set_var("GRAVIOLA_DIR", dir_str) };
+        let quoted: Vec<String> = forward.iter().map(|a| shell_quote(a)).collect();
+        let script = format!(
+            "cd {CONTAINER_REPO} && cargo run --release --quiet --target {QEMU_TARGET} \
+             --manifest-path {HARNESS}/Cargo.toml --target-dir {CONTAINER_TARGET}/crypto-diff-x86 \
+             --config {} -- {}",
+            shell_quote(&patch(&format!("{CONTAINER_GRAVIOLA}/graviola"))),
+            quoted.join(" ")
+        );
+        let mut run = container::Run::new(&script);
+        run.mount_graviola = true;
+        run.env = vec![
+            (
+                "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER".to_owned(),
+                "x86_64-linux-gnu-gcc".to_owned(),
+            ),
+            (
+                "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER".to_owned(),
+                QEMU_RUNNER.to_owned(),
+            ),
+            ("CC_x86_64_unknown_linux_gnu".to_owned(), "x86_64-linux-gnu-gcc".to_owned()),
+            ("AR_x86_64_unknown_linux_gnu".to_owned(), "x86_64-linux-gnu-ar".to_owned()),
+        ];
+        return run.status();
+    }
+
+    let target = util::work_dir()?.join("crypto-diff-target");
     util::status(
         Command::new("cargo")
             .current_dir(&root)
@@ -81,11 +117,12 @@ pub fn run(args: &[String]) -> Result<()> {
             .arg("--target-dir")
             .arg(&target)
             .arg("--config")
-            .arg(format!(
-                "patch.\"{}\".graviola.path=\"{crate_dir}\"",
-                util::GRAVIOLA_REMOTE
-            ))
+            .arg(patch(&crate_dir))
             .arg("--")
             .args(&forward),
     )
+}
+
+fn shell_quote(arg: &str) -> String {
+    format!("'{}'", arg.replace('\'', "'\\''"))
 }

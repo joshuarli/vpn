@@ -1,0 +1,29 @@
+[workspace]
+members = [".", "xtask"]
+resolver = "3"
+
+[package]
+name = "twice"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "Rust port of the Twice point-to-point VPN"
+publish = false
+
+[[bin]]
+name = "twice"
+path = "src/main.rs"
+
+[lib]
+name = "twice"
+path = "src/lib.rs"
+
+[dependencies]
+graviola = { git = "https://github.com/laputa-systems/graviola", branch = "twice-hiae" }
+libc = "0.2"
+
+[profile.release]
+codegen-units = 1
+lto = "fat"
+panic = "abort"
+strip = true

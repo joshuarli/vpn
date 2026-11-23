@@ -243,12 +243,12 @@ Each item stays visible and does not hold local completion open.
 
 | Proof | Needed | Owner command |
 | --- | --- | --- |
-| Final timing gates if the host is busy | Quiet primary host | `cargo xtask bench --suite final --candidate rust --baseline c && cargo xtask compare --policy bench/policy.json` |
-| Native x86-64 Linux, AES-NI, musl runtime | VERIFIED on `josh@threadripper`: static musl binary passed a keyed two-namespace tunnel smoke with bidirectional ping and clean teardown | none (performance portion lifted by owner 2026-11-23) |
-| VAES/AVX512 kernel, justified by measurement | AVX512+VAES x86-64 host | `cargo xtask bench --suite final --layer crypto --backend-report`. Implement the kernel only if C's backend beats AES-NI Rust outside the band |
+| Final timing gates | Lifted by owner 2026-11-23; benchmark and comparison run as informational steps only | none |
+| Native x86-64 Linux, AES-NI, musl runtime | VERIFIED on `josh@threadripper`: static musl binary passed a keyed two-namespace tunnel smoke with bidirectional ping and clean teardown | none |
+| VAES/AVX512 kernel | `josh@threadripper` exposes avx512 and vaes; kernel decision deferred with the performance gates | `cargo xtask bench --suite final --layer crypto --backend-report` only if parity gates return |
 | Bare-metal Linux AArch64 performance | Non-virtualized host | `cargo xtask bench --suite final --candidate rust --baseline c` |
-| Native macOS utun, routes, teardown | `sudo` on a dedicated Mac or VM with no production routes | `sudo cargo xtask lab native-macos` |
-| FreeBSD, OpenBSD, NetBSD, DragonFly runtime | Dedicated VM for each | `cargo xtask lab native-bsd --os <name>` |
+| Native macOS utun, routes, teardown | `josh@m1-max` is available, but `sudo -n` needs a password and `lab native-macos` is not implemented | none until the command and passwordless sudo exist |
+| BSD runtime | Out of scope by owner decision 2026-11-23 | none |
 
 ## Execution boundary and non-goals
 

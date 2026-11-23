@@ -1,4 +1,5 @@
 mod smoke;
+pub mod topology;
 
 use crate::util::Result;
 

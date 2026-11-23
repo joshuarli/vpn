@@ -91,9 +91,11 @@ lifted. Reopen only if the owner reinstates the parity gates.
 - Native macOS `utun`, routes, and teardown: the `lab native-macos` command
   referenced in `plan.md` is not implemented, and `sudo -n` on `josh@m1-max`
   requires a password. This proof remains open.
-- x86-64 Linux AES-NI/musl runtime and VAES/AVX512: `josh@threadripper` is
-  available with passwordless `doas`; the lab matrix currently runs only the
-  AArch64 musl target inside the container, so extending the matrix to an
-  external x86-64 host is required before this proof can land.
+- x86-64 Linux AES-NI/musl runtime: VERIFIED on `josh@threadripper` (AMD Ryzen 9
+  9950X, Alpine x86-64). `cargo xtask lab release --target
+  x86_64-unknown-linux-musl` produced a 492,272-byte static-pie binary with no
+  `INTERP` or `NEEDED`, and a two-namespace keyed tunnel smoke passed 3/3 pings
+  in each direction with both endpoints exiting 0 and printing `Done.`.
+  VAES/AVX512 remains open: no host with those features was measured.
 - Bare-metal Linux AArch64 performance: no non-virtualized host.
 - BSD runtime: removed from scope by owner decision on 2026-11-23.

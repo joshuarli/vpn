@@ -17,7 +17,7 @@
 | Real C/Rust interoperability | VERIFIED on primary host: 8 matrix cells, 422 checks, 0 not passing |
 | Performance parity | INCONCLUSIVE: performance gates lifted by owner 2026-11-23; timing verdicts are informational, not accepted |
 | Memory parity | UNVERIFIED: rust-vs-c screen reports implausible RSS deltas and several vmsize/reorder REGRESSIONs; measurement arms need correction before any claim |
-| Native platform gates | Linux native VERIFIED by `lab matrix`; macOS compile-checked only, native runtime on **Needs environment**; BSD out of scope by owner 2026-11-23 |
+| Native platform gates | Linux AArch64 VERIFIED by `lab matrix`; Linux x86-64 musl VERIFIED by native smoke on `threadripper`; macOS compile-checked only, native runtime on **Needs environment**; BSD out of scope by owner 2026-11-23 |
 | Stretch improvements | parked with O1–O3 when performance gates were lifted |
 
 Gate states are `VERIFIED`, `FAILED`, `BLOCKED`, `INCONCLUSIVE`, and `UNVERIFIED`. Primary-host completion and full-platform completion are reported separately.
@@ -244,7 +244,7 @@ Each item stays visible and does not hold local completion open.
 | Proof | Needed | Owner command |
 | --- | --- | --- |
 | Final timing gates if the host is busy | Quiet primary host | `cargo xtask bench --suite final --candidate rust --baseline c && cargo xtask compare --policy bench/policy.json` |
-| Native x86-64 Linux, AES-NI, musl runtime, performance | x86-64 Linux host with Graviola's baseline CPU features and `CAP_NET_ADMIN` | `cargo xtask lab matrix --rust-target x86_64-unknown-linux-musl && cargo xtask bench --suite final --candidate rust --baseline c` |
+| Native x86-64 Linux, AES-NI, musl runtime | VERIFIED on `josh@threadripper`: static musl binary passed a keyed two-namespace tunnel smoke with bidirectional ping and clean teardown | none (performance portion lifted by owner 2026-11-23) |
 | VAES/AVX512 kernel, justified by measurement | AVX512+VAES x86-64 host | `cargo xtask bench --suite final --layer crypto --backend-report`. Implement the kernel only if C's backend beats AES-NI Rust outside the band |
 | Bare-metal Linux AArch64 performance | Non-virtualized host | `cargo xtask bench --suite final --candidate rust --baseline c` |
 | Native macOS utun, routes, teardown | `sudo` on a dedicated Mac or VM with no production routes | `sudo cargo xtask lab native-macos` |

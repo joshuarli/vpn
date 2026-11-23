@@ -1,0 +1,785 @@
+{
+  "version": 1,
+  "required_metadata": [
+    "/suite",
+    "/commits/repo",
+    "/commits/oracle",
+    "/commits/graviola",
+    "/arms/baseline/commit",
+    "/arms/baseline/binary_sha256",
+    "/arms/candidate/commit",
+    "/arms/candidate/binary_sha256",
+    "/toolchains/pinned_channel",
+    "/toolchains/rustc",
+    "/toolchains/cargo",
+    "/toolchains/gcc",
+    "/toolchains/container_image",
+    "/build_flags/c/cflags",
+    "/build_flags/rust/cargo_release_profile",
+    "/target/container",
+    "/target/host",
+    "/libc",
+    "/cpu/host",
+    "/cpu/container",
+    "/crypto_backend/baseline",
+    "/crypto_backend/candidate",
+    "/mtu",
+    "/granted_socket_buffers",
+    "/offloads",
+    "/generators/iperf3",
+    "/generators/udpprobe",
+    "/generators/config",
+    "/core_budget/affinity",
+    "/core_budget/pins",
+    "/core_budget/policy",
+    "/power_thermal",
+    "/competing_load/perf_gate_ready_start",
+    "/competing_load/loadavg_host_start",
+    "/competing_load/loadavg_guest_start",
+    "/competing_load/loadavg_guest_end",
+    "/perf_gate/ready_at_start",
+    "/seeds",
+    "/raw_results",
+    "/invalid_run_reasons",
+    "/plan/layers"
+  ],
+  "pair_order": "pair p runs baseline then candidate when p is even and candidate then baseline when p is odd, so consecutive pairs form ABBA blocks",
+  "bootstrap": {
+    "resamples": 10000,
+    "confidence": 0.95
+  },
+  "descriptions": {
+    "crypto": "Layer A. One fresh process per sample, pinned to one core, time-bounded loop over one operation at one size. Arms use their automatic best backend. Both arms move data from a source buffer to a separate destination buffer, so the Rust arm includes the copy its in-place API needs.",
+    "packet": "Layer B. C: bench/c/packet_bench.c includes the pinned oracle twice.c with main and tun_write renamed and drives reorder_process_packet, reorder_check_timeouts and the encrypt/frame/decrypt path on seeded traces. Traces: in_order is counters 1..N; sparse_reorder swaps one random adjacent pair in a block of 8 with probability 1/4; near_full_window holds back one counter while 1023 later counters arrive, then releases it; repeated_gaps holds back one counter while 1..64 later counters arrive; repeated_resets changes the peer random value and restarts counters every 64 packets; large_payload is repeated_gaps with 65000 byte payloads; timeout_drain buffers 512 future packets, ages them past the timeout and runs the timeout check; full_packet_* add header build, HiAE encrypt, frame assembly, header parse and HiAE decrypt in front of the reorder logic. Counter and random-value generation is splitmix64 seeded from the run seed. The Rust arm must expose the same scenarios through the same CLI and JSON.",
+    "tunnel": "Layer C. Real binaries in two network namespaces joined by a veth pair. One session per arm and pair: direct no-tunnel ceilings first, then the tunnel with one warm-up, then the listed steps. Each endpoint is pinned to its own core, generators to other cores.",
+    "memory": "Memory. Fresh endpoint pair per session. Generators are excluded; only the two twice processes are read."
+  },
+  "metric_defs": {
+    "ns_per_op": {
+      "label": "ns",
+      "higher": false,
+      "kind": "timing"
+    },
+    "ns_per_packet": {
+      "label": "ns",
+      "higher": false,
+      "kind": "timing"
+    },
+    "alloc_count": {
+      "label": "allocs",
+      "higher": false,
+      "kind": "count"
+    },
+    "alloc_bytes": {
+      "label": "bytes",
+      "higher": false,
+      "kind": "count"
+    },
+    "retained_kb": {
+      "label": "kB",
+      "higher": false,
+      "kind": "memory"
+    },
+    "goodput_mbps": {
+      "label": "Mbit/s",
+      "higher": true,
+      "kind": "timing"
+    },
+    "received_pps": {
+      "label": "pkt/s",
+      "higher": true,
+      "kind": "timing"
+    },
+    "cpu_s_per_gib": {
+      "label": "cpu-s/GiB",
+      "higher": false,
+      "kind": "timing"
+    },
+    "cpu_us_per_packet": {
+      "label": "us/pkt",
+      "higher": false,
+      "kind": "timing"
+    },
+    "rtt_us_p50": {
+      "label": "us",
+      "higher": false,
+      "kind": "timing"
+    },
+    "rtt_us_p99": {
+      "label": "us",
+      "higher": false,
+      "kind": "timing"
+    },
+    "vmsize_kb": {
+      "label": "kB",
+      "higher": false,
+      "kind": "memory"
+    },
+    "rss_kb": {
+      "label": "kB",
+      "higher": false,
+      "kind": "memory"
+    },
+    "pss_kb": {
+      "label": "kB",
+      "higher": false,
+      "kind": "memory"
+    },
+    "hwm_kb": {
+      "label": "kB",
+      "higher": false,
+      "kind": "memory"
+    }
+  },
+  "impairments": {
+    "delay": "limit 100000 delay 10ms",
+    "loss": "limit 100000 loss 1% seed 1234",
+    "burst_loss": "limit 100000 loss gemodel 1% 20% 100% 0% seed 1234",
+    "reorder_dup": "limit 100000 delay 5ms reorder 25% 50% duplicate 1% seed 1234",
+    "mem_jitter": "limit 100000 delay 20ms 15ms seed 4242"
+  },
+  "suites": {
+    "screen": {
+      "seed": 20261123,
+      "layers": {
+        "crypto": {
+          "pairs": 6,
+          "ops": [
+            "encrypt",
+            "decrypt",
+            "decrypt_fail",
+            "mac",
+            "mac_verify"
+          ],
+          "sizes": [
+            64,
+            1420,
+            9000,
+            65536
+          ],
+          "ms": 100,
+          "warmup_ms": 50
+        },
+        "packet": {
+          "pairs": 6,
+          "scenarios": [
+            {
+              "name": "in_order",
+              "packets": 100000,
+              "reps": 100,
+              "payload": 1400
+            },
+            {
+              "name": "sparse_reorder",
+              "packets": 100000,
+              "reps": 100,
+              "payload": 1400
+            },
+            {
+              "name": "near_full_window",
+              "packets": 102400,
+              "reps": 50,
+              "payload": 1400
+            },
+            {
+              "name": "repeated_gaps",
+              "packets": 100000,
+              "reps": 50,
+              "payload": 1400
+            },
+            {
+              "name": "repeated_resets",
+              "packets": 100000,
+              "reps": 50,
+              "payload": 1400
+            },
+            {
+              "name": "large_payload",
+              "packets": 4000,
+              "reps": 50,
+              "payload": 65000
+            },
+            {
+              "name": "timeout_drain",
+              "packets": 102400,
+              "reps": 50,
+              "payload": 1400
+            },
+            {
+              "name": "full_packet_in_order",
+              "packets": 100000,
+              "reps": 10,
+              "payload": 1400
+            },
+            {
+              "name": "full_packet_sparse",
+              "packets": 100000,
+              "reps": 10,
+              "payload": 1400
+            }
+          ]
+        },
+        "tunnel": {
+          "pairs": 5,
+          "warmup_s": 1.5,
+          "phase_s": 2.5,
+          "direct_s": 1.5,
+          "probe_pps": 500,
+          "generator_saturation": 0.97,
+          "ceiling_ratio": 1.25,
+          "phases": {
+            "tcp_fwd": {
+              "kind": "tcp",
+              "mode": "fwd",
+              "metrics": [
+                "goodput_mbps",
+                "cpu_s_per_gib",
+                "cpu_us_per_packet"
+              ]
+            },
+            "tcp_rev": {
+              "kind": "tcp",
+              "mode": "rev",
+              "metrics": [
+                "goodput_mbps",
+                "cpu_s_per_gib",
+                "cpu_us_per_packet"
+              ]
+            },
+            "tcp_duplex": {
+              "kind": "tcp",
+              "mode": "duplex",
+              "metrics": [
+                "goodput_mbps",
+                "cpu_s_per_gib",
+                "cpu_us_per_packet"
+              ]
+            },
+            "udp_sat": {
+              "kind": "udp",
+              "size": 1200,
+              "pps": 600000,
+              "primary": "mbps",
+              "metrics": [
+                "goodput_mbps",
+                "cpu_s_per_gib",
+                "cpu_us_per_packet"
+              ]
+            },
+            "udp_small": {
+              "kind": "udp",
+              "size": 64,
+              "pps": 1000000,
+              "primary": "pps",
+              "metrics": [
+                "received_pps",
+                "cpu_us_per_packet"
+              ]
+            },
+            "latency_fixed": {
+              "kind": "latency",
+              "load": "udp",
+              "size": 1200,
+              "pps": 2000,
+              "metrics": [
+                "rtt_us_p50",
+                "rtt_us_p99"
+              ]
+            },
+            "latency_sat": {
+              "kind": "latency",
+              "load": "tcp",
+              "metrics": [
+                "rtt_us_p50",
+                "rtt_us_p99"
+              ]
+            },
+            "udp_fixed": {
+              "kind": "udp",
+              "size": 1200,
+              "pps": 20000,
+              "primary": "pps",
+              "metrics": [
+                "received_pps",
+                "cpu_us_per_packet"
+              ]
+            }
+          },
+          "sessions": [
+            {
+              "id": "main",
+              "veth_mtu": 1500,
+              "tun_mtu": null,
+              "steps": [
+                {
+                  "label": "clean",
+                  "netem": null,
+                  "phase": "tcp_fwd"
+                },
+                {
+                  "label": "clean",
+                  "netem": null,
+                  "phase": "tcp_rev"
+                },
+                {
+                  "label": "clean",
+                  "netem": null,
+                  "phase": "tcp_duplex"
+                },
+                {
+                  "label": "clean",
+                  "netem": null,
+                  "phase": "udp_sat"
+                },
+                {
+                  "label": "clean",
+                  "netem": null,
+                  "phase": "udp_small"
+                },
+                {
+                  "label": "clean",
+                  "netem": null,
+                  "phase": "latency_fixed"
+                },
+                {
+                  "label": "clean",
+                  "netem": null,
+                  "phase": "latency_sat"
+                },
+                {
+                  "label": "delay",
+                  "netem": "delay",
+                  "phase": "tcp_fwd"
+                },
+                {
+                  "label": "loss",
+                  "netem": "loss",
+                  "phase": "udp_fixed"
+                },
+                {
+                  "label": "reorder_dup",
+                  "netem": "reorder_dup",
+                  "phase": "tcp_fwd"
+                }
+              ]
+            },
+            {
+              "id": "mtu",
+              "veth_mtu": 1350,
+              "tun_mtu": 1300,
+              "steps": [
+                {
+                  "label": "mtu1350",
+                  "netem": null,
+                  "phase": "tcp_fwd"
+                }
+              ]
+            }
+          ]
+        },
+        "memory": {
+          "pairs": 5,
+          "settle_s": 1.5,
+          "load_s": 2.5,
+          "reorder_s": 3,
+          "drain_s": 1.5,
+          "phase_metrics": {
+            "idle": [
+              "vmsize_kb",
+              "rss_kb",
+              "pss_kb"
+            ],
+            "load": [
+              "rss_kb",
+              "pss_kb",
+              "hwm_kb"
+            ],
+            "after_load_drain": [
+              "rss_kb",
+              "pss_kb"
+            ],
+            "reorder": [
+              "hwm_kb",
+              "rss_kb",
+              "pss_kb"
+            ],
+            "after_reorder_drain": [
+              "rss_kb",
+              "pss_kb"
+            ]
+          },
+          "sessions": [
+            {
+              "id": "ordinary_load",
+              "kind": "idle_load",
+              "veth_mtu": 1500,
+              "tun_mtu": null,
+              "netem": null,
+              "phases": [
+                "idle",
+                "load",
+                "after_load_drain"
+              ]
+            },
+            {
+              "id": "reorder_1200",
+              "kind": "reorder",
+              "veth_mtu": 1500,
+              "tun_mtu": null,
+              "netem": "mem_jitter",
+              "payload": 1200,
+              "pps": 20000,
+              "phases": [
+                "reorder",
+                "after_reorder_drain"
+              ]
+            },
+            {
+              "id": "reorder_8000",
+              "kind": "reorder",
+              "veth_mtu": 9000,
+              "tun_mtu": 8900,
+              "netem": "mem_jitter",
+              "payload": 8000,
+              "pps": 5000,
+              "phases": [
+                "reorder",
+                "after_reorder_drain"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "final": {
+      "seed": 20261123,
+      "layers": {
+        "crypto": {
+          "pairs": 20,
+          "ops": [
+            "encrypt",
+            "decrypt",
+            "decrypt_fail",
+            "mac",
+            "mac_verify"
+          ],
+          "sizes": [
+            16,
+            64,
+            256,
+            1420,
+            9000,
+            65536,
+            1048576
+          ],
+          "ms": 300,
+          "warmup_ms": 100
+        },
+        "packet": {
+          "pairs": 20,
+          "scenarios": [
+            {
+              "name": "in_order",
+              "packets": 100000,
+              "reps": 300,
+              "payload": 1400
+            },
+            {
+              "name": "sparse_reorder",
+              "packets": 100000,
+              "reps": 300,
+              "payload": 1400
+            },
+            {
+              "name": "near_full_window",
+              "packets": 102400,
+              "reps": 150,
+              "payload": 1400
+            },
+            {
+              "name": "repeated_gaps",
+              "packets": 100000,
+              "reps": 150,
+              "payload": 1400
+            },
+            {
+              "name": "repeated_resets",
+              "packets": 100000,
+              "reps": 150,
+              "payload": 1400
+            },
+            {
+              "name": "large_payload",
+              "packets": 4000,
+              "reps": 150,
+              "payload": 65000
+            },
+            {
+              "name": "timeout_drain",
+              "packets": 102400,
+              "reps": 150,
+              "payload": 1400
+            },
+            {
+              "name": "full_packet_in_order",
+              "packets": 100000,
+              "reps": 30,
+              "payload": 1400
+            },
+            {
+              "name": "full_packet_sparse",
+              "packets": 100000,
+              "reps": 30,
+              "payload": 1400
+            }
+          ]
+        },
+        "tunnel": {
+          "pairs": 20,
+          "warmup_s": 3,
+          "phase_s": 6,
+          "direct_s": 3,
+          "probe_pps": 1000,
+          "generator_saturation": 0.97,
+          "ceiling_ratio": 1.25,
+          "phases": {
+            "tcp_fwd": {
+              "kind": "tcp",
+              "mode": "fwd",
+              "metrics": [
+                "goodput_mbps",
+                "cpu_s_per_gib",
+                "cpu_us_per_packet"
+              ]
+            },
+            "tcp_rev": {
+              "kind": "tcp",
+              "mode": "rev",
+              "metrics": [
+                "goodput_mbps",
+                "cpu_s_per_gib",
+                "cpu_us_per_packet"
+              ]
+            },
+            "tcp_duplex": {
+              "kind": "tcp",
+              "mode": "duplex",
+              "metrics": [
+                "goodput_mbps",
+                "cpu_s_per_gib",
+                "cpu_us_per_packet"
+              ]
+            },
+            "udp_sat": {
+              "kind": "udp",
+              "size": 1200,
+              "pps": 600000,
+              "primary": "mbps",
+              "metrics": [
+                "goodput_mbps",
+                "cpu_s_per_gib",
+                "cpu_us_per_packet"
+              ]
+            },
+            "udp_small": {
+              "kind": "udp",
+              "size": 64,
+              "pps": 1000000,
+              "primary": "pps",
+              "metrics": [
+                "received_pps",
+                "cpu_us_per_packet"
+              ]
+            },
+            "latency_fixed": {
+              "kind": "latency",
+              "load": "udp",
+              "size": 1200,
+              "pps": 2000,
+              "metrics": [
+                "rtt_us_p50",
+                "rtt_us_p99"
+              ]
+            },
+            "latency_sat": {
+              "kind": "latency",
+              "load": "tcp",
+              "metrics": [
+                "rtt_us_p50",
+                "rtt_us_p99"
+              ]
+            },
+            "udp_fixed": {
+              "kind": "udp",
+              "size": 1200,
+              "pps": 20000,
+              "primary": "pps",
+              "metrics": [
+                "received_pps",
+                "cpu_us_per_packet"
+              ]
+            }
+          },
+          "sessions": [
+            {
+              "id": "main",
+              "veth_mtu": 1500,
+              "tun_mtu": null,
+              "steps": [
+                {
+                  "label": "clean",
+                  "netem": null,
+                  "phase": "tcp_fwd"
+                },
+                {
+                  "label": "clean",
+                  "netem": null,
+                  "phase": "tcp_rev"
+                },
+                {
+                  "label": "clean",
+                  "netem": null,
+                  "phase": "tcp_duplex"
+                },
+                {
+                  "label": "clean",
+                  "netem": null,
+                  "phase": "udp_sat"
+                },
+                {
+                  "label": "clean",
+                  "netem": null,
+                  "phase": "udp_small"
+                },
+                {
+                  "label": "clean",
+                  "netem": null,
+                  "phase": "latency_fixed"
+                },
+                {
+                  "label": "clean",
+                  "netem": null,
+                  "phase": "latency_sat"
+                },
+                {
+                  "label": "delay",
+                  "netem": "delay",
+                  "phase": "tcp_fwd"
+                },
+                {
+                  "label": "loss",
+                  "netem": "loss",
+                  "phase": "udp_fixed"
+                },
+                {
+                  "label": "burst_loss",
+                  "netem": "burst_loss",
+                  "phase": "udp_fixed"
+                },
+                {
+                  "label": "reorder_dup",
+                  "netem": "reorder_dup",
+                  "phase": "tcp_fwd"
+                },
+                {
+                  "label": "reorder_dup",
+                  "netem": "reorder_dup",
+                  "phase": "udp_sat"
+                }
+              ]
+            },
+            {
+              "id": "mtu",
+              "veth_mtu": 1350,
+              "tun_mtu": 1300,
+              "steps": [
+                {
+                  "label": "mtu1350",
+                  "netem": null,
+                  "phase": "tcp_fwd"
+                },
+                {
+                  "label": "mtu1350",
+                  "netem": null,
+                  "phase": "udp_small"
+                }
+              ]
+            }
+          ]
+        },
+        "memory": {
+          "pairs": 20,
+          "settle_s": 2,
+          "load_s": 5,
+          "reorder_s": 6,
+          "drain_s": 3,
+          "phase_metrics": {
+            "idle": [
+              "vmsize_kb",
+              "rss_kb",
+              "pss_kb"
+            ],
+            "load": [
+              "rss_kb",
+              "pss_kb",
+              "hwm_kb"
+            ],
+            "after_load_drain": [
+              "rss_kb",
+              "pss_kb"
+            ],
+            "reorder": [
+              "hwm_kb",
+              "rss_kb",
+              "pss_kb"
+            ],
+            "after_reorder_drain": [
+              "rss_kb",
+              "pss_kb"
+            ]
+          },
+          "sessions": [
+            {
+              "id": "ordinary_load",
+              "kind": "idle_load",
+              "veth_mtu": 1500,
+              "tun_mtu": null,
+              "netem": null,
+              "phases": [
+                "idle",
+                "load",
+                "after_load_drain"
+              ]
+            },
+            {
+              "id": "reorder_1200",
+              "kind": "reorder",
+              "veth_mtu": 1500,
+              "tun_mtu": null,
+              "netem": "mem_jitter",
+              "payload": 1200,
+              "pps": 20000,
+              "phases": [
+                "reorder",
+                "after_reorder_drain"
+              ]
+            },
+            {
+              "id": "reorder_8000",
+              "kind": "reorder",
+              "veth_mtu": 9000,
+              "tun_mtu": 8900,
+              "netem": "mem_jitter",
+              "payload": 8000,
+              "pps": 5000,
+              "phases": [
+                "reorder",
+                "after_reorder_drain"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

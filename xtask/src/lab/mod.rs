@@ -1,3 +1,5 @@
+pub mod topology;
+
 use crate::util::Result;
 
 pub fn run(args: &[String]) -> Result<()> {

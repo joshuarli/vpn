@@ -1,42 +1,11 @@
-use crate::container::{self, CONTAINER_REPO};
-use crate::oracle::{self, ORACLE_BINARY};
+use super::common::{self, Impl};
+use crate::container;
 use crate::util::Result;
 
-const RUST_BINARY: &str = "/target/debug/twice";
+const USAGE: &str = "usage: cargo xtask lab smoke --client rust|c --server rust|c [--key] [--discover-mtu] [--rust-target <triple>]
 
-const USAGE: &str = "usage: cargo xtask lab smoke --client rust|c --server rust|c [--key] [--discover-mtu]
-
---discover-mtu starts the client with -d and checks that its TUN MTU follows the discovered value.";
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Impl {
-    C,
-    Rust,
-}
-
-impl Impl {
-    fn parse(flag: &str, value: Option<&String>) -> Result<Impl> {
-        match value.map(String::as_str) {
-            Some("c") => Ok(Impl::C),
-            Some("rust") => Ok(Impl::Rust),
-            other => Err(format!("{flag} expects c or rust, got {other:?}\n\n{USAGE}")),
-        }
-    }
-
-    fn binary(self) -> &'static str {
-        match self {
-            Impl::C => ORACLE_BINARY,
-            Impl::Rust => RUST_BINARY,
-        }
-    }
-
-    fn name(self) -> &'static str {
-        match self {
-            Impl::C => "c",
-            Impl::Rust => "rust",
-        }
-    }
-}
+--discover-mtu starts the client with -d and checks that its TUN MTU follows the discovered value.
+--rust-target runs the release binary built for that triple (aarch64-unknown-linux-musl) instead of the debug build.";
 
 const SCRIPT: &str = r##"
 W=/tmp/smoke
@@ -189,13 +158,17 @@ pub fn run(args: &[String]) -> Result<()> {
     let mut server = None;
     let mut key = false;
     let mut discover = false;
+    let mut rust_target: Option<String> = None;
     let mut it = args.iter();
     while let Some(arg) = it.next() {
         match arg.as_str() {
-            "--client" => client = Some(Impl::parse(arg, it.next())?),
-            "--server" => server = Some(Impl::parse(arg, it.next())?),
+            "--client" => client = Some(Impl::parse(arg, it.next(), USAGE)?),
+            "--server" => server = Some(Impl::parse(arg, it.next(), USAGE)?),
             "--key" => key = true,
             "--discover-mtu" => discover = true,
+            "--rust-target" => {
+                rust_target = Some(it.next().ok_or_else(|| format!("--rust-target needs a triple\n\n{USAGE}"))?.clone());
+            }
             "-h" | "--help" => {
                 println!("{USAGE}");
                 return Ok(());
@@ -206,12 +179,8 @@ pub fn run(args: &[String]) -> Result<()> {
     let client = client.ok_or_else(|| format!("--client is required\n\n{USAGE}"))?;
     let server = server.ok_or_else(|| format!("--server is required\n\n{USAGE}"))?;
 
-    if (client == Impl::C || server == Impl::C)
-        && container::Run::new(&format!("test -x {ORACLE_BINARY}")).status().is_err()
-    {
-        eprintln!("C oracle binary missing; building it");
-        oracle::build()?;
-    }
+    let uses_rust = client == Impl::Rust || server == Impl::Rust;
+    let bins = common::prepare(client == Impl::C || server == Impl::C, uses_rust, rust_target.as_deref())?;
     let key_setup = if key {
         "head -c 32 /dev/urandom > $W/vpn.key; KEY=\"-k $W/vpn.key\""
     } else {
@@ -221,8 +190,8 @@ pub fn run(args: &[String]) -> Result<()> {
     let mtu_check = if discover { MTU_CHECK_DISCOVER } else { MTU_CHECK_FIXED };
     let post_check = if discover { POST_CHECK_DISCOVER } else { ":" };
     let script = SCRIPT
-        .replace("@CLIENT_BIN@", client.binary())
-        .replace("@SERVER_BIN@", server.binary())
+        .replace("@CLIENT_BIN@", bins.path(client))
+        .replace("@SERVER_BIN@", bins.path(server))
         .replace("@KEY_SETUP@", key_setup)
         .replace("@DISCOVER_SETUP@", discover_setup)
         .replace("@MTU_CHECK@", mtu_check)
@@ -230,10 +199,5 @@ pub fn run(args: &[String]) -> Result<()> {
         .replace("@CLIENT_NAME@", client.name())
         .replace("@SERVER_NAME@", server.name())
         .replace("@KEY_NAME@", if key { "yes" } else { "no" });
-    let build = if client == Impl::Rust || server == Impl::Rust {
-        format!("cd {CONTAINER_REPO} && cargo build -q --locked -p twice && cd / && ")
-    } else {
-        String::new()
-    };
-    container::Run::new(&format!("{build}{script}")).status()
+    container::Run::new(&script).status()
 }

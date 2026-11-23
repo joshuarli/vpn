@@ -8,6 +8,7 @@ mod lab;
 mod mem;
 mod oracle;
 mod platform_check;
+mod release;
 mod resume;
 mod test;
 mod util;

@@ -55,6 +55,7 @@ performance gates are lifted.
 | Native Linux platform | `cargo xtask platform-check` | macOS compile-checked; BSD targets out of scope |
 | Benchmark suite | `cargo xtask bench --suite screen/final` | raw data under `results/bench/` |
 | Comparison | `cargo xtask compare --policy bench/policy.json` | informational; no gate accepted |
+| Clean-checkout reproducibility | `cargo xtask resume --verify-final` | PASS: 7/7 correctness gates from a clean worktree at `twice-final` |
 
 ## Findings and deviations
 

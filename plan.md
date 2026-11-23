@@ -4,9 +4,9 @@
 
 - **Goal:** an exact Rust port of `jedisct1/twice` using HiAE from the `laputa-systems/graviola` fork, proven against the C original, then at performance and memory parity.
 - **Last accepted pair:** none.
-- **Accepted:** G0, H1, H2, T1, S1. **Red:** none. **Parked:** none.
-- **Running:** B1, T2 in `.work/wt/<lane>`.
-- **Next slice:** D1, I1, T3, L1 after T2.
+- **Accepted:** G0, H1, H2, T1, S1, T2, T3, B1. **Red:** none. **Parked:** none.
+- **Running:** D1 then X1, I1 then L1, B2-prep (Rust bench arms) in `.work/wt/<lane>`.
+- **Next slice:** B2 after D1, I1, and B2-prep; then O1, O2, C1.
 - **Resume:** read this file, run `git status -sb` and `git worktree list`, then run the acceptance command of each running or next slice.
 
 | Milestone | State |
@@ -17,7 +17,7 @@
 | Real C/Rust interoperability | not started |
 | Performance parity | not started |
 | Memory parity | not started |
-| Native platform gates | not started |
+| Native platform gates | T3: four BSD targets and macOS compile-checked only; native runtime is on **Needs environment** |
 | Stretch improvements | not started |
 
 Gate states are `VERIFIED`, `FAILED`, `BLOCKED`, `INCONCLUSIVE`, and `UNVERIFIED`. Primary-host completion and full-platform completion are reported separately.

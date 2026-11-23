@@ -1,0 +1,6 @@
+{"case":{"argv":["-k","","server","auto"],"name":"opt_empty_key_path","role":"tool","seed":30718}}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":0,"via":"popen"}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $5}'","ev":"cmd","mode":"r","t_ms":0,"via":"popen"}
+{"ev":"stdout","text":""}
+{"ev":"stderr","text":"Failed to open key file: \n"}
+{"code":1,"ev":"exit","t_ms":0}

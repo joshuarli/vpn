@@ -1,0 +1,16 @@
+{"case":{"argv":["server","nosuch.invalid"],"name":"dns_resolve_noname_server","role":"tool","seed":317206}}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":0,"via":"popen"}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $5}'","ev":"cmd","mode":"r","t_ms":0,"via":"popen"}
+{"ev":"open","flags":0,"path":"/dev/urandom","t_ms":0}
+{"ev":"open","flags":2,"path":"/dev/net/tun","t_ms":0}
+{"ev":"ioctl","flags":4097,"ifname":"","req":"TUNSETIFF","role":"tun","t_ms":0}
+{"domain":"AF_INET","domain_num":2,"ev":"socket","protocol":0,"t_ms":0,"type":"SOCK_DGRAM"}
+{"ev":"ioctl","ifname":"tun0","mtu":1404,"req":"SIOCSIFMTU","role":"udp","t_ms":0}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"nosuch.invalid","service":null,"socktype":2,"t_ms":0}
+{"argv":["iptables","-t","nat","-D","POSTROUTING","-o","eth0","-s","192.168.192.1","-j","MASQUERADE"],"ev":"cmd","file":"iptables","stderr_null":true,"stdout_null":true,"t_ms":0,"via":"execvp"}
+{"argv":["iptables","-t","filter","-D","FORWARD","-i","eth0","-o","tun0","-m","state","--state","RELATED,ESTABLISHED","-j","ACCEPT"],"ev":"cmd","file":"iptables","stderr_null":true,"stdout_null":true,"t_ms":0,"via":"execvp"}
+{"argv":["iptables","-t","filter","-D","FORWARD","-i","tun0","-o","eth0","-j","ACCEPT"],"ev":"cmd","file":"iptables","stderr_null":true,"stdout_null":true,"t_ms":0,"via":"execvp"}
+{"argv":["iptables","-t","raw","-D","PREROUTING","!","-i","tun0","-d","192.168.192.254","-m","addrtype","!","--src-type","LOCAL","-j","DROP"],"ev":"cmd","file":"iptables","stderr_null":true,"stdout_null":true,"t_ms":0,"via":"execvp"}
+{"ev":"stdout","text":"Running in authentication-only mode (no encryption)\nInterface: [tun0]\nMTU: 1420 bytes (effective: 1404 bytes, with authentication)\n"}
+{"ev":"stderr","text":"Unable to resolve [nosuch.invalid]: [Name or service not known]\n"}
+{"code":1,"ev":"exit","t_ms":0}

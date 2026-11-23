@@ -1,0 +1,4 @@
+{"case":{"argv":["-m"],"name":"opt_missing_mtu_value","role":"tool","seed":35744}}
+{"ev":"stdout","text":""}
+{"ev":"stderr","text":"MTU option requires a value\n"}
+{"code":1,"ev":"exit","t_ms":0}

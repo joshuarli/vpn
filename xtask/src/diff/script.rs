@@ -7,6 +7,7 @@ const ERRNOS: &[(&str, i32)] = &[
     ("EINTR", 4),
     ("EIO", 5),
     ("EBADF", 9),
+    ("ECHILD", 10),
     ("EAGAIN", 11),
     ("EWOULDBLOCK", 11),
     ("ENOMEM", 12),

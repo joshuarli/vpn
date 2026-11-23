@@ -140,17 +140,27 @@ pub fn resolve(name: &str) -> PathBuf {
         return direct.to_path_buf();
     }
     let top = cases_dir().join(format!("{name}.jsonl"));
-    let minimized = cases_dir().join("minimized").join(format!("{name}.jsonl"));
-    if !top.is_file() && minimized.is_file() { minimized } else { top }
+    for sub in SUBDIRS {
+        let nested = cases_dir().join(sub).join(format!("{name}.jsonl"));
+        if !top.is_file() && nested.is_file() {
+            return nested;
+        }
+    }
+    top
 }
 
+const SUBDIRS: [&str; 2] = ["generated", "minimized"];
+
 pub fn all_paths() -> Result<Vec<PathBuf>> {
-    let dir = cases_dir();
+    let mut dirs = vec![cases_dir()];
+    dirs.extend(SUBDIRS.iter().map(|s| cases_dir().join(s)).filter(|d| d.is_dir()));
     let mut out = Vec::new();
-    for entry in std::fs::read_dir(&dir).map_err(|e| format!("read {}: {e}", dir.display()))? {
-        let path = entry.map_err(|e| e.to_string())?.path();
-        if path.extension().is_some_and(|e| e == "jsonl") {
-            out.push(path);
+    for dir in dirs {
+        for entry in std::fs::read_dir(&dir).map_err(|e| format!("read {}: {e}", dir.display()))? {
+            let path = entry.map_err(|e| e.to_string())?.path();
+            if path.extension().is_some_and(|e| e == "jsonl") {
+                out.push(path);
+            }
         }
     }
     out.sort();

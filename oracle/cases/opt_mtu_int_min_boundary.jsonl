@@ -1,0 +1,4 @@
+{"case":{"argv":["-m","2147483648","server","auto"],"name":"opt_mtu_int_min_boundary","role":"tool","seed":931071}}
+{"ev":"stdout","text":""}
+{"ev":"stderr","text":"Invalid MTU value: -2147483648 (must be between 68 and 9000)\n"}
+{"code":1,"ev":"exit","t_ms":0}

@@ -5,7 +5,6 @@ use std::process::Command;
 const DOCKERFILE: &str = "docker/lab.Dockerfile";
 const CARGO_REGISTRY_VOLUME: &str = "twice-lab-cargo-registry";
 const CARGO_GIT_VOLUME: &str = "twice-lab-cargo-git";
-const TARGET_VOLUME: &str = "twice-lab-target";
 
 pub const CONTAINER_REPO: &str = "/src";
 pub const CONTAINER_GRAVIOLA: &str = "/graviola";
@@ -44,6 +43,14 @@ pub fn ensure_image() -> Result<String> {
     Ok(tag)
 }
 
+fn target_volume(root: &std::path::Path) -> String {
+    let mut hash: u64 = 0xcbf29ce484222325;
+    for byte in root.as_os_str().as_encoded_bytes() {
+        hash = (hash ^ u64::from(*byte)).wrapping_mul(0x100000001b3);
+    }
+    format!("twice-lab-target-{hash:016x}")
+}
+
 pub fn graviola_checkout() -> Option<PathBuf> {
     std::env::var_os("GRAVIOLA_DIR").map(PathBuf::from).or_else(|| {
         let home = std::env::var_os("HOME")?;
@@ -78,7 +85,7 @@ impl<'a> Run<'a> {
             .arg("-v")
             .arg(format!("{CARGO_GIT_VOLUME}:/opt/cargo/git"))
             .arg("-v")
-            .arg(format!("{TARGET_VOLUME}:{CONTAINER_TARGET}"))
+            .arg(format!("{}:{CONTAINER_TARGET}", target_volume(&root)))
             .args(["-e", &format!("CARGO_TARGET_DIR={CONTAINER_TARGET}")]);
         if self.mount_graviola {
             let dir = graviola_checkout()

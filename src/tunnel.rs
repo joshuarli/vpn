@@ -171,6 +171,8 @@ fn start(run: Run) -> i32 {
     if os::tun_set_mtu(&if_name, mtu::effective_tun_mtu(tun_mtu)) != 0 {
         os::perror(c"mtu");
     }
+    #[cfg(target_os = "openbsd")]
+    os::pledge_runtime();
 
     let port = c_string(run.port.as_bytes());
     let mut firewall = Firewall {

@@ -4,13 +4,14 @@
 
 - **Goal:** an exact Rust port of `jedisct1/twice` using HiAE from the `laputa-systems/graviola` fork, proven against the C original, then at performance and memory parity.
 - **Last accepted pair:** none.
-- **Accepted:** none. **Red:** none. **Parked:** none.
-- **Next slice:** G0.
-- **Resume:** read this file, run `git status -sb`, then run the acceptance command of the next slice.
+- **Accepted:** G0. **Red:** none. **Parked:** none.
+- **Running:** H1, T1, S1, B1 in `.work/wt/<lane>` (Graviola H1 in `~/repos/graviola/.work/wt/h1`).
+- **Next slice:** T2 after H1 and T1; D1 after S1 and T2.
+- **Resume:** read this file, run `git status -sb` and `git worktree list`, then run the acceptance command of each running or next slice.
 
 | Milestone | State |
 | --- | --- |
-| C reference and baseline | not started |
+| C reference and baseline | G0 accepted: pins, oracle build, lab image |
 | Graviola HiAE byte parity | not started |
 | Rust behavioral parity | not started |
 | Real C/Rust interoperability | not started |

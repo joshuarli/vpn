@@ -52,10 +52,11 @@ performance gates are lifted.
 | Differential harness self-check | `cargo xtask diff --self-check` | passes |
 | Compatibility ledger | `cargo xtask diff --ledger` | 19 entries, 0 failed |
 | Real interoperability | `cargo xtask lab matrix` | 8 cells, 422 checks, 0 not passing |
+| Musl release binaries | `cargo xtask lab matrix --rust-target aarch64-unknown-linux-musl`; `cargo xtask lab release --target x86_64-unknown-linux-musl` | AArch64 static-pie: 8 cells, 422 checks, 0 not passing; x86-64 static-pie: native smoke PASS |
 | Native Linux platform | `cargo xtask platform-check` | macOS compile-checked; BSD targets out of scope |
 | Benchmark suite | `cargo xtask bench --suite screen/final` | raw data under `results/bench/` |
 | Comparison | `cargo xtask compare --policy bench/policy.json` | informational; no gate accepted |
-| Clean-checkout reproducibility | `cargo xtask resume --verify-final` | PASS: 7/7 correctness gates from a clean worktree at `twice-final` |
+| Clean-checkout reproducibility | `cargo xtask resume --verify-final` | PASS: 7/7 correctness gates from a clean worktree at `twice-final` (`84e0c8e`); later commits are documentation and verifier fixes only |
 
 ## Findings and deviations
 

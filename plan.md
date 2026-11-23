@@ -4,8 +4,8 @@
 
 - **Goal:** an exact Rust port of `jedisct1/twice` using HiAE from the `laputa-systems/graviola` fork, proven against the C original, then at performance and memory parity.
 - **Last accepted pair:** `c606807` (correctness pair; refreshed after C1 lands).
-- **Accepted:** G0, H1, H2, T1, S1, T2, T3, B1, D1, X1, I1, B2-prep, C1 verification. **Red:** none. **Parked:** O1, O2, O3 (owner lifted performance gates 2026-11-23 and asked to prioritize feature completion).
-- **Running:** B2 final suite is collecting data with performance gates lifted, so its timing verdicts are informational; L1 AArch64 musl matrix verification.
+- **Accepted:** G0, H1, H2, T1, S1, T2, T3, B1, D1, X1, I1, B2-prep, L1, C1 verification. **Red:** none. **Parked:** O1, O2, O3 (owner lifted performance gates 2026-11-23 and asked to prioritize feature completion).
+- **Running:** B2 final suite is collecting data with performance gates lifted, so its timing verdicts are informational.
 - **Next slice:** C1 verification and handoff. BSD runtime is out of scope by owner decision 2026-11-23; macOS native runtime remains on **Needs environment** (`sudo` on `m1-max` needs a password).
 - **Resume:** read this file, run `git status -sb` and `git worktree list`, then run `cargo xtask resume --verify-final`.
 

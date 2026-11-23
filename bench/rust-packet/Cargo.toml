@@ -1,0 +1,20 @@
+[package]
+name = "twice-packet-bench"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[[bin]]
+name = "twice-packet-bench"
+path = "src/main.rs"
+
+[dependencies]
+twice = { path = "../.." }
+libc = "0.2"
+
+[profile.release]
+codegen-units = 1
+lto = "fat"
+panic = "abort"
+
+[workspace]

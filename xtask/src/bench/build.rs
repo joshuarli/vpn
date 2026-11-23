@@ -28,6 +28,13 @@ if [ "$BUILD_RUST" = 1 ]; then
   echo "rust.crypto_err=$(grep -m1 -E '^error' /target/bench/log/rust-crypto.log | head -c 300)"
   [ -f /target/bench-rust/release/twice-crypto-bench ] && echo "rust.crypto_bench.sha256=$(sha256sum /target/bench-rust/release/twice-crypto-bench | cut -d' ' -f1)"
   [ -f /target/bench-rust/release/twice-crypto-bench ] && echo "rust.backend_probe=$(/target/bench-rust/release/twice-crypto-bench --op encrypt --size 64 --ms 5 --warmup-ms 1)"
+  (cd bench/rust-packet && CARGO_TARGET_DIR=/target/bench-rust cargo update -p graviola --precise "$GRAVIOLA_REV" >/target/bench/log/rust-packet.log 2>&1 \
+     && CARGO_TARGET_DIR=/target/bench-rust cargo build --release >>/target/bench/log/rust-packet.log 2>&1); echo "rust.packet_rc=$?"
+  echo "rust.packet_err=$(grep -m1 -E '^error' /target/bench/log/rust-packet.log | head -c 300)"
+  [ -f /target/bench-rust/release/twice-packet-bench ] && echo "rust.packet_bench.sha256=$(sha256sum /target/bench-rust/release/twice-packet-bench | cut -d' ' -f1)"
+  echo "rust.graviola_crypto_bench=$(grep -A2 'name = \"graviola\"' bench/rust-crypto/Cargo.lock | grep -o '#[0-9a-f]*' | tr -d '#')"
+  echo "rust.graviola_packet_bench=$(grep -A2 'name = \"graviola\"' bench/rust-packet/Cargo.lock | grep -o '#[0-9a-f]*' | tr -d '#')"
+  echo "rust.rustflags=${RUSTFLAGS:-}"
   echo "rust.rustc=$(rustc -V)"
 fi
 "#;
@@ -92,13 +99,22 @@ pub fn build(want_rust: bool) -> Result<Value> {
         "backend": backend("rust.backend_probe"),
         "build": "cargo build --locked --release -p twice (profile release: codegen-units 1, lto fat, panic abort, strip)",
         "crypto_bench_unavailable": "rust crypto bench not built",
-        "packet_bench_unavailable": "not available for rust yet: the twice library has no packet-path bench harness",
+        "packet_bench_unavailable": "rust packet bench not built",
         "twice_build_error": null,
     });
     if want_rust {
         if !rc_ok("rust.twice_rc") {
             rust["twice_build_error"] = json!(get("rust.twice_err"));
         }
+        if rc_ok("rust.packet_rc") {
+            rust["packet_bench"] = json!("/target/bench-rust/release/twice-packet-bench");
+            rust["packet_bench_unavailable"] = Value::Null;
+            rust["sha256"]["packet_bench"] = json!(get("rust.packet_bench.sha256"));
+        } else {
+            rust["packet_bench_unavailable"] = json!(format!("rust packet bench build failed: {}", get("rust.packet_err")));
+        }
+        rust["graviola_bench_crates"] = json!({"crypto_bench": get("rust.graviola_crypto_bench"), "packet_bench": get("rust.graviola_packet_bench")});
+        rust["rustflags"] = json!(get("rust.rustflags"));
         if rc_ok("rust.crypto_rc") {
             rust["crypto_bench"] = json!("/target/bench-rust/release/twice-crypto-bench");
             rust["crypto_bench_unavailable"] = Value::Null;

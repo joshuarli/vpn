@@ -68,6 +68,10 @@ fn clean_checkout(commit: &str) -> Result<PathBuf> {
             &root,
         ))?;
     }
+    util::status(git(
+        Command::new("git").args(["submodule", "update", "--init", "oracle/upstream"]),
+        &dir,
+    ))?;
     let actual = util::capture(git(Command::new("git").args(["rev-parse", "HEAD"]), &dir))?;
     if !actual.starts_with(commit) {
         return Err(format!("verify checkout is at {}, expected {commit}", actual.trim()));

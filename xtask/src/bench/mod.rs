@@ -258,6 +258,9 @@ fn assemble_meta(
     let cargo_profile = util::read(&util::repo_root().join("Cargo.toml"))
         .ok()
         .and_then(|t| t.split("[profile.release]").nth(1).map(|s| s.trim().to_owned()));
+    let bench_profile = util::read(&util::repo_root().join("bench/rust-packet/Cargo.toml"))
+        .ok()
+        .and_then(|t| t.split("[profile.release]").nth(1).and_then(|s| s.split("[workspace]").next()).map(|s| s.trim().to_owned()));
     let mut mtus = Vec::new();
     let mut tun_mtus = Vec::new();
     for layer in plan["layers"].as_object().into_iter().flatten().map(|(_, v)| v) {
@@ -292,7 +295,14 @@ fn assemble_meta(
         },
         "build_flags": {
             "c": {"cflags": built["c_cflags"], "build": built["c"]["build"]},
-            "rust": {"cargo_release_profile": cargo_profile, "rustflags": "none (RUSTFLAGS unset); portable target-cpu unless the build sets it", "command": built["rust"]["build"]},
+            "rust": {
+                "cargo_release_profile": cargo_profile,
+                "bench_crates_release_profile": bench_profile,
+                "rustflags": if built["rust"]["rustflags"].as_str().is_some_and(|f| !f.is_empty()) { built["rust"]["rustflags"].clone() } else { json!("none (RUSTFLAGS unset); portable target-cpu") },
+                "command": built["rust"]["build"],
+                "bench_crates": "bench/rust-crypto and bench/rust-packet, cargo build --release with graviola pinned to the root Cargo.lock rev",
+                "graviola_bench_crates": built["rust"]["graviola_bench_crates"],
+            },
         },
         "target": {"container": cm["rustc_host"], "machine": cm["machine"], "host": "aarch64-apple-darwin (xtask only, never measured)"},
         "libc": cm["libc"],

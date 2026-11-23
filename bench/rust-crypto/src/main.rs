@@ -2,6 +2,13 @@ use graviola::aead::HiAe;
 use std::hint::black_box;
 use std::time::Instant;
 
+#[cfg(target_arch = "aarch64")]
+const BACKEND: &str = "graviola HiAe aarch64 NEON+AES (automatic)";
+#[cfg(target_arch = "x86_64")]
+const BACKEND: &str = "graviola HiAe x86_64 AES-NI+AVX (automatic)";
+#[cfg(not(any(target_arch = "aarch64", target_arch = "x86_64")))]
+const BACKEND: &str = "graviola HiAe (automatic)";
+
 fn splitmix(state: &mut u64) -> u64 {
     *state = state.wrapping_add(0x9e3779b97f4a7c15);
     let mut z = *state;
@@ -107,8 +114,8 @@ fn main() {
     }
     let ns_op = elapsed_ns as f64 / ops as f64;
     println!(
-        "{{\"tool\":\"crypto_bench\",\"lang\":\"rust\",\"backend\":\"graviola HiAe automatic ({})\",\"op\":\"{}\",\"size\":{},\"ops\":{},\"elapsed_ns\":{},\"ns_per_op\":{:.4},\"mib_per_s\":{:.3},\"sink\":{}}}",
-        std::env::consts::ARCH,
+        "{{\"tool\":\"crypto_bench\",\"lang\":\"rust\",\"backend\":\"{}\",\"op\":\"{}\",\"size\":{},\"ops\":{},\"elapsed_ns\":{},\"ns_per_op\":{:.4},\"mib_per_s\":{:.3},\"sink\":{}}}",
+        BACKEND,
         op,
         size,
         ops,

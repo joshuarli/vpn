@@ -32,10 +32,14 @@ impl Impl {
     }
 }
 
+const JOB_TIMEOUT_S: u64 = 120;
+
 pub struct Job {
     pub which: Impl,
     pub header: Header,
     pub script: String,
+    pub bin: Option<String>,
+    pub timeout_s: u64,
 }
 
 impl Job {
@@ -44,7 +48,13 @@ impl Job {
     }
 
     pub fn from_parts(which: Impl, header: &Header, inputs: &[super::case::Input], calls: bool) -> Result<Job> {
-        Ok(Job { which, header: header.clone(), script: script::compile(header, inputs, calls)? })
+        Ok(Job {
+            which,
+            header: header.clone(),
+            script: script::compile(header, inputs, calls)?,
+            bin: None,
+            timeout_s: JOB_TIMEOUT_S,
+        })
     }
 }
 
@@ -81,7 +91,8 @@ fn write_job(dir: &std::path::Path, job: &Job) -> Result<()> {
         set_mode(&dest, 0o600)?;
     }
     std::fs::write(dir.join("script"), &job.script).map_err(|e| e.to_string())?;
-    let meta = json!({"bin": job.which.binary(), "argv": job.header.argv, "timeout_s": 120});
+    let bin = job.bin.as_deref().unwrap_or(job.which.binary());
+    let meta = json!({"bin": bin, "argv": job.header.argv, "timeout_s": job.timeout_s});
     std::fs::write(dir.join("job.json"), meta.to_string()).map_err(|e| e.to_string())
 }
 
@@ -105,7 +116,7 @@ pub fn run_batch(jobs: &[Job]) -> Result<Vec<Vec<Value>>> {
         let jd = dir.join(format!("job{i:05}"));
         write_job(&jd, job)?;
     }
-    let want_rust = jobs.iter().any(|j| j.which == Impl::Rust);
+    let want_rust = jobs.iter().any(|j| j.which == Impl::Rust && j.bin.is_none());
     let rust_build = if want_rust {
         format!("cd {CONTAINER_REPO} && (cargo build -q --locked -p twice >{CONTAINER_REPO}/.work/diff/batch/rust_build.log 2>&1 || true); ")
     } else {

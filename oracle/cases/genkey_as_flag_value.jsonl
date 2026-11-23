@@ -1,0 +1,6 @@
+{"case":{"argv":["genkey","-k"],"name":"genkey_as_flag_value","normalize":["generated-key"],"role":"tool","seed":318926}}
+{"ev":"open","flags":0,"path":"/dev/urandom","t_ms":0}
+{"ev":"stdout","text":"Successfully generated 256-bit key file: -k\n\nUsage:\n  Server: sudo ./twice -k -k server auto\n  Client: sudo ./twice -k -k client <server-ip>\n\nImportant: Copy this key file securely to both server and client\n"}
+{"ev":"stderr","text":""}
+{"ev":"file","hex":"a40ad1a1a3c50d7e8c39fb3c865cbecbef65cff8c7e16cd30707b453e07ed547","mode":"0600","path":"-k"}
+{"code":0,"ev":"exit","t_ms":0}

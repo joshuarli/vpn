@@ -1,0 +1,4 @@
+{"case":{"argv":["client","192.0.2.10"],"errors":[{"call":"popen","count":1,"errno":"EMFILE","nth":1}],"name":"exit_gateway_command_unavailable","role":"tool","seed":672811}}
+{"ev":"stdout","text":""}
+{"ev":"stderr","text":"Unable to automatically determine the gateway IP\n"}
+{"code":1,"ev":"exit","t_ms":0}

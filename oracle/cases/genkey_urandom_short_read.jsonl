@@ -1,0 +1,6 @@
+{"case":{"argv":["genkey","g.key"],"errors":[{"call":"read","count":1,"fd":"urandom","nth":1,"short":7}],"name":"genkey_urandom_short_read","normalize":["generated-key"],"role":"tool","seed":993935}}
+{"ev":"open","flags":0,"path":"/dev/urandom","t_ms":0}
+{"ev":"stdout","text":"Successfully generated 256-bit key file: g.key\n\nUsage:\n  Server: sudo ./twice -k g.key server auto\n  Client: sudo ./twice -k g.key client <server-ip>\n\nImportant: Copy this key file securely to both server and client\n"}
+{"ev":"stderr","text":""}
+{"ev":"file","hex":"feeed0979a92d5950da8b93b5cfb9d8cf826ea0cf1e4820ee5f416b8fd87f1c0","mode":"0600","path":"g.key"}
+{"code":0,"ev":"exit","t_ms":0}

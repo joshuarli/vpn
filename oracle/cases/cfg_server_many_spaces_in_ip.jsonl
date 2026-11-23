@@ -1,0 +1,36 @@
+{"case":{"argv":["server","auto","auto","auto","a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19 a20 a21 a22 a23 a24 a25 a26 a27 a28 a29 a30 a31 a32 a33 a34 a35 a36 a37 a38 a39 a40 a41 a42 a43 a44 a45 a46 a47 a48 a49 a50 a51 a52 a53 a54 a55 a56 a57 a58 a59 a60 a61 a62 a63 a64 a65 a66 a67 a68 a69","10.1.1.2"],"name":"cfg_server_many_spaces_in_ip","role":"tool","seed":25667}}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":0,"via":"popen"}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $5}'","ev":"cmd","mode":"r","t_ms":0,"via":"popen"}
+{"ev":"open","flags":0,"path":"/dev/urandom","t_ms":0}
+{"ev":"open","flags":2,"path":"/dev/net/tun","t_ms":0}
+{"ev":"ioctl","flags":4097,"ifname":"","req":"TUNSETIFF","role":"tun","t_ms":0}
+{"domain":"AF_INET","domain_num":2,"ev":"socket","protocol":0,"t_ms":0,"type":"SOCK_DGRAM"}
+{"ev":"ioctl","ifname":"tun0","mtu":1404,"req":"SIOCSIFMTU","role":"udp","t_ms":0}
+{"argv":["sysctl","net.ipv4.ip_forward=1"],"ev":"cmd","file":"sysctl","stderr_null":false,"stdout_null":false,"t_ms":0,"via":"execvp"}
+{"argv":["ip","addr","add","a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19 a20 a21 a22 a23 a24 a25 a26 a27 a28 a29 a30 a31 a32 a33 a34 a35 a36 a37 a38 a39 a40 a41 a42 a43 a44 a45 a46 a47 a48 a49 a50 a51 a52 a53 a54 a55 a56 a57 a58 a59 a60 a61 a62 a63 a64 a65 a66 a67 a68 a69","peer","10.1.1.2","dev","tun0"],"ev":"cmd","file":"ip","stderr_null":false,"stdout_null":false,"t_ms":0,"via":"execvp"}
+{"argv":["ip","-6","addr","add","64:ff9b::a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 ","peer","64:ff9b::10.1.1.2/96","dev","tun0"],"ev":"cmd","file":"ip","stderr_null":false,"stdout_null":false,"t_ms":0,"via":"execvp"}
+{"argv":["ip","link","set","dev","tun0","up"],"ev":"cmd","file":"ip","stderr_null":false,"stdout_null":false,"t_ms":0,"via":"execvp"}
+{"argv":["iptables","-t","raw","-I","PREROUTING","!","-i","tun0","-d","a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19 a20 a21 a22 a23 a24 a25 a26 a27 a28 a29 a30 a31 a32 a33 a34 a35 a36 a37 a38 a39 a40 a41 a42 a43 a44 a45 a46 a47 a48 a49 a50 a51 a52 a53 a54 a55 a56 a57 a58 a59 a60 a61 a62 a63 a64 a65 a66 a67 a68 a69","-m","addrtype","!","--src-type","LOCAL","-j","DROP"],"ev":"cmd","file":"iptables","stderr_null":false,"stdout_null":false,"t_ms":0,"via":"execvp"}
+{"argv":["iptables","-t","nat","-A","POSTROUTING","-o","eth0","-s","10.1.1.2","-j","MASQUERADE"],"ev":"cmd","file":"iptables","stderr_null":false,"stdout_null":false,"t_ms":0,"via":"execvp"}
+{"argv":["iptables","-t","filter","-A","FORWARD","-i","eth0","-o","tun0","-m","state","--state","RELATED,ESTABLISHED","-j","ACCEPT"],"ev":"cmd","file":"iptables","stderr_null":false,"stdout_null":false,"t_ms":0,"via":"execvp"}
+{"argv":["iptables","-t","filter","-A","FORWARD","-i","tun0","-o","eth0","-j","ACCEPT"],"ev":"cmd","file":"iptables","stderr_null":false,"stdout_null":false,"t_ms":0,"via":"execvp"}
+{"disp":"handler","ev":"signal","name":"SIGINT","sig":2,"t_ms":0}
+{"disp":"handler","ev":"signal","name":"SIGTERM","sig":15,"t_ms":0}
+{"ev":"getaddrinfo","family":0,"flags":1,"node":null,"service":"41194","socktype":2,"t_ms":0}
+{"domain":"AF_INET","domain_num":2,"ev":"socket","protocol":17,"t_ms":0,"type":"SOCK_DGRAM"}
+{"ev":"setsockopt","level":1,"name":2,"t_ms":0,"value":"01000000"}
+{"ev":"setsockopt","level":1,"name":8,"t_ms":0,"value":"00004000"}
+{"ev":"setsockopt","level":1,"name":7,"t_ms":0,"value":"00004000"}
+{"ev":"setsockopt","level":41,"name":26,"t_ms":0,"value":"00000000"}
+{"addr":"0.0.0.0:41194","ev":"bind","t_ms":0}
+{"cmd":"F_GETFL","ev":"fcntl","role":"udp","t_ms":0}
+{"arg":2050,"cmd":"F_SETFL","ev":"fcntl","role":"udp","t_ms":0}
+{"disp":"handler","ev":"signal_delivered","sig":15,"t_ms":3000}
+{"disp":"SIG_DFL","ev":"signal","name":"SIGTERM","sig":15,"t_ms":3000}
+{"argv":["iptables","-t","nat","-D","POSTROUTING","-o","eth0","-s","10.1.1.2","-j","MASQUERADE"],"ev":"cmd","file":"iptables","stderr_null":false,"stdout_null":false,"t_ms":3000,"via":"execvp"}
+{"argv":["iptables","-t","filter","-D","FORWARD","-i","eth0","-o","tun0","-m","state","--state","RELATED,ESTABLISHED","-j","ACCEPT"],"ev":"cmd","file":"iptables","stderr_null":false,"stdout_null":false,"t_ms":3000,"via":"execvp"}
+{"argv":["iptables","-t","filter","-D","FORWARD","-i","tun0","-o","eth0","-j","ACCEPT"],"ev":"cmd","file":"iptables","stderr_null":false,"stdout_null":false,"t_ms":3000,"via":"execvp"}
+{"argv":["iptables","-t","raw","-D","PREROUTING","!","-i","tun0","-d","a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19 a20 a21 a22 a23 a24 a25 a26 a27 a28 a29 a30 a31 a32 a33 a34 a35 a36 a37 a38 a39 a40 a41 a42 a43 a44 a45 a46 a47 a48 a49 a50 a51 a52 a53 a54 a55 a56 a57 a58 a59 a60 a61 a62 a63 a64 a65 a66 a67 a68 a69","-m","addrtype","!","--src-type","LOCAL","-j","DROP"],"ev":"cmd","file":"iptables","stderr_null":false,"stdout_null":false,"t_ms":3000,"via":"execvp"}
+{"ev":"stdout","text":"Running in authentication-only mode (no encryption)\nInterface: [tun0]\nMTU: 1420 bytes (effective: 1404 bytes, with authentication)\nListening on UDP *:41194\nDone.\n"}
+{"ev":"stderr","text":""}
+{"code":0,"ev":"exit","t_ms":3000}

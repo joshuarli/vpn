@@ -1,0 +1,320 @@
+{"case":{"argv":["client","192.0.2.10","70000"],"end_signal":"none","name":"args_client_bad_port","role":"tool","seed":837336}}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":0,"via":"popen"}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $5}'","ev":"cmd","mode":"r","t_ms":0,"via":"popen"}
+{"ev":"open","flags":0,"path":"/dev/urandom","t_ms":0}
+{"ev":"open","flags":2,"path":"/dev/net/tun","t_ms":0}
+{"ev":"ioctl","flags":4097,"ifname":"","req":"TUNSETIFF","role":"tun","t_ms":0}
+{"domain":"AF_INET","domain_num":2,"ev":"socket","protocol":0,"t_ms":0,"type":"SOCK_DGRAM"}
+{"ev":"ioctl","ifname":"tun0","mtu":1404,"req":"SIOCSIFMTU","role":"udp","t_ms":0}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":null,"socktype":2,"t_ms":0}
+{"addr":"192.0.2.10","ev":"getnameinfo","flags":3,"t_ms":0}
+{"argv":["ip","rule","delete","table","42069"],"ev":"cmd","file":"ip","stderr_null":true,"stdout_null":true,"t_ms":0,"via":"execvp"}
+{"argv":["ip","-6","rule","delete","table","42069"],"ev":"cmd","file":"ip","stderr_null":true,"stdout_null":true,"t_ms":0,"via":"execvp"}
+{"argv":["ip","rule","delete","table","main","suppress_prefixlength","0"],"ev":"cmd","file":"ip","stderr_null":true,"stdout_null":true,"t_ms":0,"via":"execvp"}
+{"argv":["ip","-6","rule","delete","table","main","suppress_prefixlength","0"],"ev":"cmd","file":"ip","stderr_null":true,"stdout_null":true,"t_ms":0,"via":"execvp"}
+{"argv":["iptables","-t","raw","-D","PREROUTING","!","-i","tun0","-d","192.168.192.1","-m","addrtype","!","--src-type","LOCAL","-j","DROP"],"ev":"cmd","file":"iptables","stderr_null":true,"stdout_null":true,"t_ms":0,"via":"execvp"}
+{"disp":"handler","ev":"signal","name":"SIGINT","sig":2,"t_ms":0}
+{"disp":"handler","ev":"signal","name":"SIGTERM","sig":15,"t_ms":0}
+{"ev":"sleep","ms":0,"t_ms":0}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":0,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":0}
+{"ev":"sleep","ms":1000,"t_ms":0}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":1000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":1000}
+{"ev":"sleep","ms":2000,"t_ms":1000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":3000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":3000}
+{"ev":"sleep","ms":3000,"t_ms":3000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":6000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":6000}
+{"ev":"sleep","ms":3000,"t_ms":6000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":9000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":9000}
+{"ev":"sleep","ms":3000,"t_ms":9000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":12000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":12000}
+{"ev":"sleep","ms":3000,"t_ms":12000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":15000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":15000}
+{"ev":"sleep","ms":3000,"t_ms":15000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":18000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":18000}
+{"ev":"sleep","ms":3000,"t_ms":18000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":21000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":21000}
+{"ev":"sleep","ms":3000,"t_ms":21000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":24000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":24000}
+{"ev":"sleep","ms":3000,"t_ms":24000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":27000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":27000}
+{"ev":"sleep","ms":3000,"t_ms":27000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":30000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":30000}
+{"ev":"sleep","ms":3000,"t_ms":30000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":33000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":33000}
+{"ev":"sleep","ms":3000,"t_ms":33000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":36000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":36000}
+{"ev":"sleep","ms":3000,"t_ms":36000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":39000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":39000}
+{"ev":"sleep","ms":3000,"t_ms":39000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":42000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":42000}
+{"ev":"sleep","ms":3000,"t_ms":42000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":45000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":45000}
+{"ev":"sleep","ms":3000,"t_ms":45000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":48000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":48000}
+{"ev":"sleep","ms":3000,"t_ms":48000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":51000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":51000}
+{"ev":"sleep","ms":3000,"t_ms":51000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":54000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":54000}
+{"ev":"sleep","ms":3000,"t_ms":54000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":57000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":57000}
+{"ev":"sleep","ms":3000,"t_ms":57000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":60000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":60000}
+{"ev":"sleep","ms":3000,"t_ms":60000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":63000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":63000}
+{"ev":"sleep","ms":3000,"t_ms":63000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":66000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":66000}
+{"ev":"sleep","ms":3000,"t_ms":66000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":69000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":69000}
+{"ev":"sleep","ms":3000,"t_ms":69000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":72000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":72000}
+{"ev":"sleep","ms":3000,"t_ms":72000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":75000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":75000}
+{"ev":"sleep","ms":3000,"t_ms":75000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":78000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":78000}
+{"ev":"sleep","ms":3000,"t_ms":78000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":81000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":81000}
+{"ev":"sleep","ms":3000,"t_ms":81000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":84000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":84000}
+{"ev":"sleep","ms":3000,"t_ms":84000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":87000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":87000}
+{"ev":"sleep","ms":3000,"t_ms":87000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":90000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":90000}
+{"ev":"sleep","ms":3000,"t_ms":90000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":93000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":93000}
+{"ev":"sleep","ms":3000,"t_ms":93000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":96000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":96000}
+{"ev":"sleep","ms":3000,"t_ms":96000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":99000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":99000}
+{"ev":"sleep","ms":3000,"t_ms":99000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":102000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":102000}
+{"ev":"sleep","ms":3000,"t_ms":102000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":105000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":105000}
+{"ev":"sleep","ms":3000,"t_ms":105000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":108000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":108000}
+{"ev":"sleep","ms":3000,"t_ms":108000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":111000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":111000}
+{"ev":"sleep","ms":3000,"t_ms":111000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":114000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":114000}
+{"ev":"sleep","ms":3000,"t_ms":114000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":117000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":117000}
+{"ev":"sleep","ms":3000,"t_ms":117000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":120000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":120000}
+{"ev":"sleep","ms":3000,"t_ms":120000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":123000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":123000}
+{"ev":"sleep","ms":3000,"t_ms":123000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":126000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":126000}
+{"ev":"sleep","ms":3000,"t_ms":126000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":129000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":129000}
+{"ev":"sleep","ms":3000,"t_ms":129000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":132000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":132000}
+{"ev":"sleep","ms":3000,"t_ms":132000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":135000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":135000}
+{"ev":"sleep","ms":3000,"t_ms":135000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":138000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":138000}
+{"ev":"sleep","ms":3000,"t_ms":138000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":141000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":141000}
+{"ev":"sleep","ms":3000,"t_ms":141000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":144000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":144000}
+{"ev":"sleep","ms":3000,"t_ms":144000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":147000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":147000}
+{"ev":"sleep","ms":3000,"t_ms":147000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":150000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":150000}
+{"ev":"sleep","ms":3000,"t_ms":150000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":153000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":153000}
+{"ev":"sleep","ms":3000,"t_ms":153000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":156000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":156000}
+{"ev":"sleep","ms":3000,"t_ms":156000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":159000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":159000}
+{"ev":"sleep","ms":3000,"t_ms":159000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":162000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":162000}
+{"ev":"sleep","ms":3000,"t_ms":162000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":165000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":165000}
+{"ev":"sleep","ms":3000,"t_ms":165000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":168000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":168000}
+{"ev":"sleep","ms":3000,"t_ms":168000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":171000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":171000}
+{"ev":"sleep","ms":3000,"t_ms":171000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":174000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":174000}
+{"ev":"sleep","ms":3000,"t_ms":174000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":177000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":177000}
+{"ev":"sleep","ms":3000,"t_ms":177000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":180000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":180000}
+{"ev":"sleep","ms":3000,"t_ms":180000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":183000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":183000}
+{"ev":"sleep","ms":3000,"t_ms":183000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":186000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":186000}
+{"ev":"sleep","ms":3000,"t_ms":186000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":189000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":189000}
+{"ev":"sleep","ms":3000,"t_ms":189000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":192000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":192000}
+{"ev":"sleep","ms":3000,"t_ms":192000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":195000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":195000}
+{"ev":"sleep","ms":3000,"t_ms":195000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":198000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":198000}
+{"ev":"sleep","ms":3000,"t_ms":198000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":201000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":201000}
+{"ev":"sleep","ms":3000,"t_ms":201000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":204000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":204000}
+{"ev":"sleep","ms":3000,"t_ms":204000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":207000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":207000}
+{"ev":"sleep","ms":3000,"t_ms":207000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":210000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":210000}
+{"ev":"sleep","ms":3000,"t_ms":210000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":213000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":213000}
+{"ev":"sleep","ms":3000,"t_ms":213000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":216000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":216000}
+{"ev":"sleep","ms":3000,"t_ms":216000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":219000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":219000}
+{"ev":"sleep","ms":3000,"t_ms":219000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":222000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":222000}
+{"ev":"sleep","ms":3000,"t_ms":222000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":225000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":225000}
+{"ev":"sleep","ms":3000,"t_ms":225000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":228000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":228000}
+{"ev":"sleep","ms":3000,"t_ms":228000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":231000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":231000}
+{"ev":"sleep","ms":3000,"t_ms":231000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":234000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":234000}
+{"ev":"sleep","ms":3000,"t_ms":234000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":237000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":237000}
+{"ev":"sleep","ms":3000,"t_ms":237000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":240000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":240000}
+{"ev":"sleep","ms":3000,"t_ms":240000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":243000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":243000}
+{"ev":"sleep","ms":3000,"t_ms":243000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":246000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":246000}
+{"ev":"sleep","ms":3000,"t_ms":246000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":249000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":249000}
+{"ev":"sleep","ms":3000,"t_ms":249000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":252000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":252000}
+{"ev":"sleep","ms":3000,"t_ms":252000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":255000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":255000}
+{"ev":"sleep","ms":3000,"t_ms":255000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":258000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":258000}
+{"ev":"sleep","ms":3000,"t_ms":258000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":261000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":261000}
+{"ev":"sleep","ms":3000,"t_ms":261000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":264000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":264000}
+{"ev":"sleep","ms":3000,"t_ms":264000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":267000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":267000}
+{"ev":"sleep","ms":3000,"t_ms":267000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":270000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":270000}
+{"ev":"sleep","ms":3000,"t_ms":270000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":273000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":273000}
+{"ev":"sleep","ms":3000,"t_ms":273000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":276000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":276000}
+{"ev":"sleep","ms":3000,"t_ms":276000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":279000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":279000}
+{"ev":"sleep","ms":3000,"t_ms":279000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":282000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":282000}
+{"ev":"sleep","ms":3000,"t_ms":282000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":285000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":285000}
+{"ev":"sleep","ms":3000,"t_ms":285000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":288000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":288000}
+{"ev":"sleep","ms":3000,"t_ms":288000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":291000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":291000}
+{"ev":"sleep","ms":3000,"t_ms":291000}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":294000,"via":"popen"}
+{"ev":"getaddrinfo","family":0,"flags":0,"node":"192.0.2.10","service":"70000","socktype":2,"t_ms":294000}
+{"ev":"stdout","text":"Running in authentication-only mode (no encryption)\nInterface: [tun0]\nMTU: 1420 bytes (effective: 1404 bytes, with authentication)\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\nTrying to reconnect\nConnecting to UDP 192.0.2.10:70000...\n"}
+{"ev":"stderr","text":"Unable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to create the UDP client socket: [Servname not supported for ai_socktype]\nUDP client connection failed: Invalid argument\nUnable to connect to server: [Invalid argument]\n"}
+{"code":255,"ev":"exit","t_ms":294000}

@@ -1,0 +1,42 @@
+{"case":{"argv":["-k","vpn.key","server","auto"],"files":{"vpn.key":"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"},"key":"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f","name":"srv_probe_echo_authenticated_form","role":"server","seed":11032,"urandom_prefix":"0102030405060708"}}
+{"t_ms":100,"udp_in":{"auth":"valid","counter":18446744073709551615,"from":"10.9.0.2:41194","payload":"11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dce3eaf1f8ff060d141b222930373e454c535a61686f767d848b9299a0a7aeb5bcc3cad1d8dfe6edf4fb020910171e252c333a41484f565d646b727980878e959ca3aab1b8bfc6","random":"ffffffffffffffff"}}
+{"t_ms":110,"udp_in":{"auth":"valid","counter":18446744073709551615,"from":"10.9.0.2:41194","payload":"","random":"ffffffffffffffff"}}
+{"t_ms":120,"udp_in":{"auth":"bad_tag","counter":18446744073709551615,"from":"10.9.0.2:41194","payload":"11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dce3eaf1f8ff060d141b222930373e454c535a61686f767d848b9299a0a7aeb5bcc3cad1d8dfe6edf4fb020910171e252c333a41484f565d646b727980878e959ca3aab1b8bfc6cdd4dbe2e9f0f7fe050c131a21282f363d444b525960676e757c838a91989fa6adb4bbc2c9d0d7dee5ecf3fa01080f161d242b323940474e555c636a71787f868d949ba2a9b0b7bec5ccd3dae1e8eff6fd040b121920272e353c434a51585f666d747b828990979ea5acb3bac1c8cfd6dde4ebf2f900070e151c232a31383f464d545b626970777e858c939aa1a8afb6bdc4cbd2d9e0e7eef5fc030a11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dce3eaf1f8ff060d141b222930373e454c535a61686f767d848b9299a0a7aeb5bcc3cad1d8dfe6edf4fb020910171e252c333a41484f565d646b727980878e959ca3aab1b8bfc6cdd4dbe2e9f0f7fe050c131a21282f363d444b525960676e757c838a91989fa6adb4bbc2c9d0d7dee5ecf3fa01080f161d242b323940474e555c636a71787f868d949ba2a9b0b7bec5ccd3dae1e8eff6fd040b121920272e353c434a51585f666d747b828990979ea5acb3bac1c8cfd6dde4ebf2f900070e151c232a31383f464d545b626970777e858c939aa1a8afb6","random":"ffffffffffffffff"}}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":0,"via":"popen"}
+{"command":"ip route show default 2>/dev/null|awk '/default/{print $5}'","ev":"cmd","mode":"r","t_ms":0,"via":"popen"}
+{"ev":"open","flags":0,"path":"/dev/urandom","t_ms":0}
+{"ev":"open","flags":2,"path":"/dev/net/tun","t_ms":0}
+{"ev":"ioctl","flags":4097,"ifname":"","req":"TUNSETIFF","role":"tun","t_ms":0}
+{"domain":"AF_INET","domain_num":2,"ev":"socket","protocol":0,"t_ms":0,"type":"SOCK_DGRAM"}
+{"ev":"ioctl","ifname":"tun0","mtu":1404,"req":"SIOCSIFMTU","role":"udp","t_ms":0}
+{"argv":["sysctl","net.ipv4.ip_forward=1"],"ev":"cmd","file":"sysctl","stderr_null":false,"stdout_null":false,"t_ms":0,"via":"execvp"}
+{"argv":["ip","addr","add","192.168.192.254","peer","192.168.192.1","dev","tun0"],"ev":"cmd","file":"ip","stderr_null":false,"stdout_null":false,"t_ms":0,"via":"execvp"}
+{"argv":["ip","-6","addr","add","64:ff9b::192.168.192.254","peer","64:ff9b::192.168.192.1/96","dev","tun0"],"ev":"cmd","file":"ip","stderr_null":false,"stdout_null":false,"t_ms":0,"via":"execvp"}
+{"argv":["ip","link","set","dev","tun0","up"],"ev":"cmd","file":"ip","stderr_null":false,"stdout_null":false,"t_ms":0,"via":"execvp"}
+{"argv":["iptables","-t","raw","-I","PREROUTING","!","-i","tun0","-d","192.168.192.254","-m","addrtype","!","--src-type","LOCAL","-j","DROP"],"ev":"cmd","file":"iptables","stderr_null":false,"stdout_null":false,"t_ms":0,"via":"execvp"}
+{"argv":["iptables","-t","nat","-A","POSTROUTING","-o","eth0","-s","192.168.192.1","-j","MASQUERADE"],"ev":"cmd","file":"iptables","stderr_null":false,"stdout_null":false,"t_ms":0,"via":"execvp"}
+{"argv":["iptables","-t","filter","-A","FORWARD","-i","eth0","-o","tun0","-m","state","--state","RELATED,ESTABLISHED","-j","ACCEPT"],"ev":"cmd","file":"iptables","stderr_null":false,"stdout_null":false,"t_ms":0,"via":"execvp"}
+{"argv":["iptables","-t","filter","-A","FORWARD","-i","tun0","-o","eth0","-j","ACCEPT"],"ev":"cmd","file":"iptables","stderr_null":false,"stdout_null":false,"t_ms":0,"via":"execvp"}
+{"disp":"handler","ev":"signal","name":"SIGINT","sig":2,"t_ms":0}
+{"disp":"handler","ev":"signal","name":"SIGTERM","sig":15,"t_ms":0}
+{"ev":"getaddrinfo","family":0,"flags":1,"node":null,"service":"41194","socktype":2,"t_ms":0}
+{"domain":"AF_INET","domain_num":2,"ev":"socket","protocol":17,"t_ms":0,"type":"SOCK_DGRAM"}
+{"ev":"setsockopt","level":1,"name":2,"t_ms":0,"value":"01000000"}
+{"ev":"setsockopt","level":1,"name":8,"t_ms":0,"value":"00004000"}
+{"ev":"setsockopt","level":1,"name":7,"t_ms":0,"value":"00004000"}
+{"ev":"setsockopt","level":41,"name":26,"t_ms":0,"value":"00000000"}
+{"addr":"0.0.0.0:41194","ev":"bind","t_ms":0}
+{"cmd":"F_GETFL","ev":"fcntl","role":"udp","t_ms":0}
+{"arg":2050,"cmd":"F_SETFL","ev":"fcntl","role":"udp","t_ms":0}
+{"counter":18446744073709551615,"ev":"udp_out","payload_len":100,"probe":true,"random":"ffffffffffffffff","raw":"ffffffffffffffffffffffffffffffff430aeb3891f1a0d7e8c6d4aa199e9bc747c88cc68bf70dfc4d24f09af012672a2383008da4402e9479a6b27048d6708cb1272afc412470abf86f2c2b5fed6444d0d8d66eaa291c766954f08e226f2d4553a0496ca189a2b292a9679a2e26f09d9e71d1138bcd075d270356f8a990e88a4216a987","t_ms":100,"tag_ok":true,"to":"10.9.0.2:41194","via":"sendto"}
+{"counter":18446744073709551615,"ev":"udp_out","payload_len":0,"probe":true,"random":"ffffffffffffffff","raw":"ffffffffffffffffffffffffffffffff703e6002954fec58539d728ad01f5725","t_ms":110,"tag_ok":true,"to":"10.9.0.2:41194","via":"sendto"}
+{"counter":18446744073709551615,"ev":"udp_out","payload_len":500,"probe":true,"random":"ffffffffffffffff","raw":"ffffffffffffffffffffffffffffffff430aeb3891f1a0d7e8c6d4aa199e9bc747c88cc68bf70dfc4d24f09af012672a2383008da4402e9479a6b27048d6708cb1272afc412470abf86f2c2b5fed6444d0d8d66eaa291c766954f08e226f2d4553a0496ca189a2b292a9679a2e26f09d9e71d11301464ce0597989f4f035481be9c042067bb1a283aa55fd3e94681af381c379aa2dd3cdbd51faf25d32f22915afc846eaee9c9f4f378d119c78a90d713a6dd52733a3d2b8597b531d62d220f6bae352beb5bae81cb0288e60ec54c7be7b6e7151404091368e14e0ffd950e21e6e0075d8fd223c5fe87a8bff3e085db371ed4af4ca0e7d5a08f93bb1220ec61c8c1962535a5d3dee1f1aa31ff78a11d85f37168fb29406cac5f3beebb7d7f46190d18f5e9cdfb717b640519b13961df8710a7ec4a998a37cccd6d19f183774be96ee37a90645939ad09025b2f9bb859fbd3e5177cf7fd63550f5369c6c4a12988e283b8262509da42d8f9fe4547233cb17f00417785a2ec3195e1aadabc0a4a1ca5642a74015c21dee88e89c3f0fc823b0be4fe1d85cef2370e3ec5e7a1a9e2917c5a905f8b74aa46328858202a72be0cc71719f318ba971bb1c368ee01b1f57d528204631f7a2a8b213dbca8921fe666b88b275dcdfac3677e7ac8b6677cef9e5348561af262f46f2c02cb1fcbe22d5064efe02cfdb12c00e856f2afbed52bd4a013cb378d7afc612dacee1ccb3db76fa497ce4","t_ms":120,"tag_ok":false,"to":"10.9.0.2:41194","via":"sendto"}
+{"disp":"handler","ev":"signal_delivered","sig":15,"t_ms":3120}
+{"disp":"SIG_DFL","ev":"signal","name":"SIGTERM","sig":15,"t_ms":3120}
+{"argv":["iptables","-t","nat","-D","POSTROUTING","-o","eth0","-s","192.168.192.1","-j","MASQUERADE"],"ev":"cmd","file":"iptables","stderr_null":false,"stdout_null":false,"t_ms":3120,"via":"execvp"}
+{"argv":["iptables","-t","filter","-D","FORWARD","-i","eth0","-o","tun0","-m","state","--state","RELATED,ESTABLISHED","-j","ACCEPT"],"ev":"cmd","file":"iptables","stderr_null":false,"stdout_null":false,"t_ms":3120,"via":"execvp"}
+{"argv":["iptables","-t","filter","-D","FORWARD","-i","tun0","-o","eth0","-j","ACCEPT"],"ev":"cmd","file":"iptables","stderr_null":false,"stdout_null":false,"t_ms":3120,"via":"execvp"}
+{"argv":["iptables","-t","raw","-D","PREROUTING","!","-i","tun0","-d","192.168.192.254","-m","addrtype","!","--src-type","LOCAL","-j","DROP"],"ev":"cmd","file":"iptables","stderr_null":false,"stdout_null":false,"t_ms":3120,"via":"execvp"}
+{"ev":"stdout","text":"Running in encrypted mode with authentication\nInterface: [tun0]\nMTU: 1420 bytes (effective: 1404 bytes, with authentication)\nListening on UDP *:41194\nDone.\n"}
+{"ev":"stderr","text":""}
+{"code":0,"ev":"exit","t_ms":3120}

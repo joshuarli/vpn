@@ -1,0 +1,4 @@
+{"case":{"argv":["-k"],"name":"opt_missing_key_value","role":"tool","seed":434903}}
+{"ev":"stdout","text":""}
+{"ev":"stderr","text":"Key option requires a file path\n"}
+{"code":1,"ev":"exit","t_ms":0}

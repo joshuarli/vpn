@@ -1,6 +1,9 @@
 mod case;
 mod compare;
+mod corpus;
+mod ledger;
 mod minimize;
+mod mutation;
 mod norm;
 mod run;
 mod script;
@@ -18,6 +21,8 @@ struct Opts {
     calls: bool,
     contains: Option<String>,
     against: Option<Impl>,
+    count: Option<u64>,
+    seed: Option<u64>,
 }
 
 enum Mode {
@@ -28,6 +33,8 @@ enum Mode {
     Minimize(String),
     MutationCheck,
     Ledger,
+    GenCorpus,
+    GenTraces,
 }
 
 const USAGE: &str = "usage: cargo xtask diff <mode> [options]
@@ -39,8 +46,11 @@ modes:
   --case <name>             replay one case
   --all                     replay every oracle/cases/*.jsonl
   --minimize <case>         delta-debug input events down to a minimal disagreement
-  --mutation-check          reserved for lane D1
-  --ledger                  reserved for lane X1
+  --gen-corpus              rewrite the hand-written corpus cases and record their C goldens
+  --gen-traces [--seed N] [--count N]
+                            generate seeded random traces, record C goldens, compare Rust, minimize disagreements
+  --mutation-check          rebuild Rust with deliberate faults and require each to fail a case
+  --ledger                  replay every compat/ledger.json reproducer through C and Rust and check its evidence
 
 options:
   --impl c|rust|both        implementations to replay (default both; minimize subject default rust)
@@ -59,7 +69,7 @@ fn parse_impl(s: &str) -> Result<Vec<Impl>> {
 
 fn parse(args: &[String]) -> Result<Opts> {
     let mut mode = None;
-    let mut opts = Opts { mode: Mode::All, impls: None, calls: false, contains: None, against: None };
+    let mut opts = Opts { mode: Mode::All, impls: None, calls: false, contains: None, against: None, count: None, seed: None };
     let mut i = 0;
     let mut record_names: Vec<String> = Vec::new();
     let mut record_all = false;
@@ -80,6 +90,10 @@ fn parse(args: &[String]) -> Result<Opts> {
             }
             "--case" => mode = Some(Mode::Case(value(&mut i, a)?)),
             "--minimize" => mode = Some(Mode::Minimize(value(&mut i, a)?)),
+            "--gen-corpus" => mode = Some(Mode::GenCorpus),
+            "--gen-traces" => mode = Some(Mode::GenTraces),
+            "--count" => opts.count = Some(value(&mut i, a)?.parse::<u64>().map_err(|e| format!("--count: {e}"))?),
+            "--seed" => opts.seed = Some(value(&mut i, a)?.parse::<u64>().map_err(|e| format!("--seed: {e}"))?),
             "--mutation-check" => mode = Some(Mode::MutationCheck),
             "--ledger" => mode = Some(Mode::Ledger),
             "--impl" => opts.impls = Some(parse_impl(&value(&mut i, a)?)?),
@@ -119,8 +133,14 @@ pub fn run(args: &[String]) -> Result<()> {
             replay(cases, &opts)
         }
         Mode::Minimize(name) => minimize_case(name, &opts),
-        Mode::MutationCheck => Err("--mutation-check is reserved for lane D1".to_owned()),
-        Mode::Ledger => Err("--ledger is reserved for lane X1".to_owned()),
+        Mode::GenCorpus => {
+            let names = corpus::write_all()?;
+            println!("wrote {} corpus cases", names.len());
+            record(&names, &opts)
+        }
+        Mode::GenTraces => gen_traces(&opts),
+        Mode::MutationCheck => mutation::run(),
+        Mode::Ledger => ledger::run(),
     }
 }
 
@@ -210,6 +230,25 @@ fn replay(cases: Vec<Case>, opts: &Opts) -> Result<()> {
     }
     println!("{} passed, {failed} failed", outcomes.len() - failed);
     if failed > 0 { Err(format!("{failed} case run(s) disagree with the recorded events")) } else { Ok(()) }
+}
+
+fn gen_traces(opts: &Opts) -> Result<()> {
+    let seed = opts.seed.unwrap_or(1);
+    let count = opts.count.unwrap_or(40);
+    let names = corpus::write_generated(seed, count)?;
+    record(&names, opts)?;
+    let cases = names.iter().map(|n| Case::load(&case::resolve(n))).collect::<Result<Vec<_>>>()?;
+    let outcomes = evaluate(&cases, &[Impl::Rust], opts.calls)?;
+    let bad: Vec<&Outcome> = outcomes.iter().filter(|o| !o.ok).collect();
+    println!("{} generated traces, {} disagree between C and Rust", outcomes.len(), bad.len());
+    for o in &bad {
+        println!("FAIL {}", o.case);
+        for line in o.report.lines() {
+            println!("       {line}");
+        }
+        minimize_case(&o.case, opts)?;
+    }
+    if bad.is_empty() { Ok(()) } else { Err(format!("{} generated trace(s) disagree; minimized under oracle/cases/minimized", bad.len())) }
 }
 
 fn minimize_case(name: &str, opts: &Opts) -> Result<()> {

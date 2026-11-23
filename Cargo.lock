@@ -22,7 +22,7 @@ dependencies = [
 [[package]]
 name = "graviola"
 version = "0.4.5"
-source = "git+https://github.com/laputa-systems/graviola?branch=twice-hiae#27f2ab9bc7db9ee89b726356fbd2263aa78dc1e9"
+source = "git+https://github.com/laputa-systems/graviola?branch=twice-hiae#ad177b4a64f96274a4494e4a65d6d861c3369044"
 dependencies = [
  "cfg-if",
  "getrandom",

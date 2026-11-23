@@ -62,12 +62,12 @@ pub fn graviola_checkout() -> Option<PathBuf> {
 pub struct Run<'a> {
     pub script: &'a str,
     pub env: Vec<(String, String)>,
-    pub mount_graviola: bool,
+    pub graviola: Option<PathBuf>,
 }
 
 impl<'a> Run<'a> {
     pub fn new(script: &'a str) -> Self {
-        Run { script, env: Vec::new(), mount_graviola: false }
+        Run { script, env: Vec::new(), graviola: None }
     }
 
     fn command(&self) -> Result<Command> {
@@ -87,9 +87,7 @@ impl<'a> Run<'a> {
             .arg("-v")
             .arg(format!("{}:{CONTAINER_TARGET}", target_volume(&root)))
             .args(["-e", &format!("CARGO_TARGET_DIR={CONTAINER_TARGET}")]);
-        if self.mount_graviola {
-            let dir = graviola_checkout()
-                .ok_or("no Graviola checkout: set GRAVIOLA_DIR or clone ~/repos/graviola")?;
+        if let Some(dir) = &self.graviola {
             cmd.arg("-v").arg(format!("{}:{CONTAINER_GRAVIOLA}", dir.display()));
         }
         for (k, v) in &self.env {

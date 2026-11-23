@@ -80,9 +80,6 @@ pub fn run(args: &[String]) -> Result<()> {
     };
     if qemu {
         forward.push("--qemu".to_owned());
-        let dir_str = dir.to_str().ok_or("Graviola path must be UTF-8")?;
-        // SAFETY: xtask is single-threaded here, no other thread reads or writes the environment.
-        unsafe { std::env::set_var("GRAVIOLA_DIR", dir_str) };
         let quoted: Vec<String> = forward.iter().map(|a| shell_quote(a)).collect();
         let script = format!(
             "cd {CONTAINER_REPO} && cargo run --release --quiet --target {QEMU_TARGET} \
@@ -92,7 +89,7 @@ pub fn run(args: &[String]) -> Result<()> {
             quoted.join(" ")
         );
         let mut run = container::Run::new(&script);
-        run.mount_graviola = true;
+        run.graviola = Some(dir.clone());
         run.env = vec![
             (
                 "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER".to_owned(),

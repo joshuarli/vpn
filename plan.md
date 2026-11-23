@@ -1,461 +1,264 @@
-## Mission
+# Twice Rust Port Campaign
+
+## Status
+
+- **Goal:** an exact Rust port of `jedisct1/twice` using HiAE from the `laputa-systems/graviola` fork, proven against the C original, then at performance and memory parity.
+- **Last accepted pair:** none.
+- **Accepted:** none. **Red:** none. **Parked:** none.
+- **Next slice:** G0.
+- **Resume:** read this file, run `git status -sb`, then run the acceptance command of the next slice.
+
+| Milestone | State |
+| --- | --- |
+| C reference and baseline | not started |
+| Graviola HiAE byte parity | not started |
+| Rust behavioral parity | not started |
+| Real C/Rust interoperability | not started |
+| Performance parity | not started |
+| Memory parity | not started |
+| Native platform gates | not started |
+| Stretch improvements | not started |
+
+Gate states are `VERIFIED`, `FAILED`, `BLOCKED`, `INCONCLUSIVE`, and `UNVERIFIED`. Primary-host completion and full-platform completion are reported separately.
+
+## Charter
+
+- **Do the implementation.** A plan, scaffold, harness, or successful round trip is not completion.
+- **Decide and keep going.** No question is left for runtime. Record a decision only when a later slice depends on it, by rewriting **Decisions**.
+- **Stop only** when every local deliverable passes or every remaining item is parked behind a hard stop. **Needs environment** items do not hold the campaign open.
+- **Hard stops park the item:** an effect outside **Execution boundary**, a change to a frozen oracle or acceptance policy, or a loop that cannot check anything. Complete all independent work first.
+- **Parity before optimization.** Until phase 4, performance is measured and logged. Only the egregious thresholds below gate earlier work.
+- **Fix egregious problems in their own commit:** a packet-path allocation after initialization, a Rust case over 2x C CPU time or peak RSS, a narrow test over 60 s, or any crash, data race, or unauthenticated delivery. Record anything else in `compat/ledger.json` or `results/experiments.jsonl`.
+- **Failure rule:** establish the cause with `root-cause` before retrying. An item gets two attempts with materially different approaches, then parks on its branch with the cause, reproducer, and retry condition. Never repeat an unavailable environment.
+- **Steering:** run the [parent steering checkpoint](/Users/josh/.claude/skills/orchestrate/references/campaigns.md#parent-steering-checkpoint) after each accepted slice, on resume, and after a slice fails twice.
+- **Delegation is native Claude Code subagents only (owner, 2026-11-23).** Never call `pi-subagent-bridge`, its MCP tools, its `scope-check`, or Codex. Use `sonnet` for worker and mechanic lanes, `haiku` for read-only scouts, and `opus` at `xhigh` only for exceptional architecture or adversarial review. If the pinned model is unavailable, that lane is blocked. Never use a `fable` model.
+- **Lane scope:** the parent creates each worktree at `.work/wt/<lane>`, names it as the only writable location, and checks `git diff --name-only <base>...HEAD` against the slice's owned paths before integrating. Follow the [worktree lifecycle](/Users/josh/.claude/skills/orchestrate/SKILL.md#worktree-lifecycle).
+- **Parallelism:** run ready slices with disjoint owned paths in parallel, up to `perf-gate-ready -s` headroom. The parent is the only writer of root `Cargo.toml`, `Cargo.lock`, and this file. Performance measurements are serial per host.
+- **Toolchain:** the owner's `rust-toolchain.toml` (`nightly-2026-11-09` with `rust-src`, `llvm-tools`, `clippy`) is binding here, and Graviola pins the same channel. Never edit, override, or bypass either file. Containers install exactly this channel. Adding a `rustup` target to it is allowed.
+- **Commits:** small Conventional Commits with the workstream (`crypto`, `core`, `harness`, `bench`, `platform`) as scope and the item ID in the body. Code comments never cite this doc. No formatters.
+- **Scratch:** `.work/` only, never `/tmp` or `$TMPDIR` on the host. `.work/` is disposable, so required results are committed under `results/`.
+
+## Decisions
+
+### Owner
+
+1. **Graviola publication (2026-11-23).** The executor may push only branch `twice-hiae` to `laputa-systems/graviola`, so `Cargo.lock` can pin an exact public revision. No other branch, PR, release, package, or remote.
+2. **CPU envelope (2026-11-23).** The port supports x86-64 and AArch64 CPUs meeting Graviola's baseline and exits with a clear startup error elsewhere. No software HiAE backend ships. This is ledger entry `DEV-001`, an intentional deviation from C's table-based fallback.
+3. **Native subagents only (2026-11-23).** See **Charter**.
+4. **Toolchain (2026-11-23).** `rust-toolchain.toml` is binding. See **Charter**.
+
+### Prescribed
+
+| ID | Decision | Reason | Reversed by |
+| --- | --- | --- | --- |
+| P1 | The port lives in this repo (`joshuarli/vpn`, branch `master`), package and binary `twice`. | The owner created this repo and toolchain for it. | Owner |
+| P2 | Twice oracle is `391c461697c871e542c7beb44631e77e4c5646dd`, as submodule `oracle/upstream`. `src/HiAE_amalgamated.c` must hash to SHA-256 `05f745a783317f3e6dc3b0a85a71075eacd1a2a6f82711243e8f6c053c3d6f05`. | Current upstream HEAD at preflight. The reference never moves during the campaign. | Owner |
+| P3 | Graviola work happens in `~/repos/graviola` on `twice-hiae`, created by merging `origin/laputa/main` (`bbb6286`) into `origin/main` (`6f71172`). | `main` lacks the fork's zmm16-31 wipe, zeroisation, and CPU-gate fixes that HiAE's secret handling needs. The merge is clean and its 220 Graviola tests pass on AArch64. | Merge no longer clean |
+| P4 | Graviola API is `graviola::aead::HiAe`: `new(key: [u8; 32])`, `encrypt(&self, nonce: &[u8; 16], aad, inout: &mut [u8], tag_out: &mut [u8; 16])`, `decrypt(&self, nonce, aad, inout, tag: &[u8; 16]) -> Result<(), Error>`, `mac(&self, nonce, data) -> [u8; 16]`, `verify_mac(&self, nonce, data, tag) -> Result<(), Error>`. | Matches existing in-place AEAD conventions, allocates nothing, and needs no overlapping references. | Measured need |
+| P5 | Failed `decrypt` zeroises all of `inout` before returning `Error::DecryptFailed`. Tags compare with `ct_equal`. Keys zeroise on drop. Each kernel runs under `Entry::new_secret()` and clears every register class it uses. | Unauthenticated plaintext never leaves the API, and wire output is unchanged. | None |
+| P6 | HiAE lives in `low/{aarch64,x86_64}/hiae.rs` plus safe `mid/hiae.rs`, using AES round instructions directly. No Cargo feature. Dispatch checks each kernel's exact CPU features and does not change other algorithms' requirements. | Fits the existing layers. | Binary-size regression over 5% |
+| P7 | Do not copy `rust-hiae` code into Graviola. It may be read, and its published vectors may be used with attribution. | Its `MIT OR Apache-2.0` code cannot be relicensed to Graviola's `Apache-2.0 OR ISC OR MIT-0`. Its soft backend also uses a secret-indexed S-box. | Author permission |
+| P8 | The port is MIT and keeps Frank Denis's Twice copyright notice. | It is derived from MIT-licensed code. | Owner |
+| P9 | Production dependencies are `graviola` and `libc` only. `xtask` may add `serde` and `serde_json`. Any other dependency needs a recorded maintenance, license, build-time, and binary-size check within the gates here. No async runtime or threads. | Draft's small-tunnel requirement. | Measured need |
+| P10 | Rust calls OS effects through `libc` symbols, and reads randomness from `/dev/urandom`. | One `LD_PRELOAD` shim can then drive the unmodified C binary and the Rust binary, with no test hook in production. | None |
+| P11 | The oracle is the unmodified C source built with its own Makefile flags, dynamically linked against glibc, under `oracle/shim/twice_shim.c`. The shim controls `clock_gettime`, `poll`, `read`, `readv`, `write`, `writev`, `recv`, `recvfrom`, `send`, `sendmsg`, `sendto`, `socket`, `connect`, `bind`, `setsockopt`, `fcntl`, `open`, `ioctl`, `sleep`, `popen`, `pclose`, `fork`, `execvp`, `waitpid`, `getaddrinfo`, `getnameinfo`, and `signal`. | Keeps C state-transition logic intact. `sleep`, name resolution, and subprocesses are decisions the draft's list omitted. | None |
+| P12 | Primary host is Linux AArch64 in OrbStack on this Apple M5 Max, in a disposable container with its own network namespaces. | Proven by running the C tunnel here. | None |
+| P13 | Inherited security weaknesses are reproduced and recorded, never fixed in this campaign. Memory corruption and undefined behavior are not reproduced. | The owner requires exactness and no silent protocol change. | Owner |
+| P14 | `cargo xtask` is the only command interface. | Draft allows it and it avoids extra tooling. | None |
+
+### Delegated
+
+- **Internal Rust structure:** executor's choice inside P9 and P10. Tests assert observable behavior.
+- **Reorder storage:** executor's choice if it preserves all 1,024 slots, the full accepted payload domain, and worst-case information.
+- **Traffic tools:** `iperf3` plus a small `xtask` UDP probe by default. Substitute only if the tool saturates before the direct-path ceiling, and log the reason.
+- **Screening sample size:** at least 5 ABBA pairs. Final validation uses at least 20.
+
+## Compatibility contract
 
-Implement an exact initial Rust port of https://github.com/jedisct1/twice, using my Graviola fork at https://github.com/laputa-systems/graviola for cryptography.
+Exactness covers observable behavior for defined upstream operations: datagram bytes, cryptographic outputs, CLI, stdout and stderr per stream, exit status, packet acceptance, delivery order, duplicate and loss handling, reordering, timeouts, peer changes, counters, reconnects, MTU discovery and configuration, TUN framing, and routing and firewall setup and cleanup. It excludes C layouts, allocation strategy, and undefined behavior.
 
-Co-developing the Graviola fork to add the required algorithms, APIs, hardware acceleration, tests, and benchmarks is explicitly in scope.
+**Allowed normalizations only:** the startup random value and values derived from it, generated keys, kernel-assigned interface names, OS error text after a `perror` or `gai_strerror` prefix, and process IDs. Each is listed in `compat/normalizations.json`. Interleaving between stdout and stderr is not compared because C buffers stdout on a pipe.
 
-The goals, in order, are:
+**`compat/ledger.json`** has one entry per difference or finding: `id`, minimal reproducer, C behavior, Rust behavior, class (`defined`, `oracle-defect`, `intentional-deviation`), and milestone. An undecided entry blocks its milestone.
 
-1. Establish a reproducible local C reference and benchmark suite.
-2. Add byte-compatible HiAE authenticated encryption and HiAE-MAC to my Graviola fork.
-3. Implement a Rust Twice with the original wire format and observable behavior.
-4. Demonstrate C/Rust interoperability and differential correctness.
-5. Match or exceed the original in both performance and memory usage.
-6. Pursue measured improvements while retaining compatibility.
+### Behavior inventory
 
-Do the implementation. Do not stop after producing a plan, scaffolding, a benchmark harness, or a successful round trip.
+Paths are in `oracle/upstream`. D1 needs a named case for every row. Behaviors marked *predicted* come from reading the source, and D1 confirms them.
 
-Operate autonomously, make small reviewable local commits, and maintain resumable checkpoints. Follow repository instructions and existing authorization for pushing. Do not open upstream PRs or publish packages as part of this campaign.
+| Area | Required behavior | Source |
+| --- | --- | --- |
+| Wire | 8-byte little-endian random value, 8-byte little-endian counter, payload, 16-byte tag; the 16-byte header is the nonce, AD is empty in encrypted mode | `src/twice.c:820`, `:830` |
+| No-key mode | All-zero key; payload is cleartext; tag is `HiAE_mac` (init, absorb payload as AD, finalize with message length 0) | `src/twice.c:838`, `src/HiAE_amalgamated.c:2237` |
+| Key file | Reads the first 32 bytes, accepts trailing bytes, rejects short files | `src/twice.c:101` |
+| Options | `-k`, `-m`, `-d` must precede the mode; `-m` clears discovery, `-d` sets it, so order matters; `atoi` parsing; range 68 to 9000 | `src/twice.c:1261` |
+| Mode | Anything other than exactly `server` is a client | `src/twice.c:1302` |
+| `genkey` | Recognized only as `argv[1]`, with alias `generate-key`; refuses an existing path; writes then `chmod 0600` | `src/twice.c:1198` |
+| Exit status | Usage 254; early setup errors 1; server firewall or `doit` setup failure 255; event-loop failure after setup still prints `Done.` and exits 0 | `src/twice.c:1150`, `:1112`, `:1390`, `:1405` |
+| Signals | First SIGINT or SIGTERM requests clean exit and restores the default handler | `src/twice.c:128` |
+| Reorder | 1,024 slots by `counter % 1024`; duplicate and collision drop; jump at or beyond the window resets and delivers | `src/twice.c:423`, `:536` |
+| Timeout | Strictly over 2,000 ms, checked at least 50 ms apart, skips to the lowest buffered counter | `src/twice.c:399`, `:408`, `:783` |
+| Peer epoch | Random-value change resets reorder state and accepts that counter | `src/twice.c:500` |
+| Counter wrap | Sender increments random after `UINT64_MAX`; receiver arithmetic wraps as unsigned | `src/twice.c:812`, `:536` |
+| Oversize | TUN reads over `tun_mtu + 62` drop and end that loop iteration | `src/twice.c:585`, `:805` |
+| Server input | Under 16 bytes ignored; probe magic echoed before authentication; failed auth dropped; peer address updates after auth and before replay checks | `src/twice.c:933`, `:949`, `:996` |
+| Client input | Under 16 bytes ignored; 16 to 31 bytes or failed auth triggers reconnect; late authenticated probe replies enter reorder (*predicted*) | `src/twice.c:1019`, `:1036`, `:1052`, `:1078` |
+| Send errors | Server logs and continues; client reconnects except on `EAGAIN` | `src/twice.c:859`, `:906` |
+| Reconnect | 100 attempts, sleeping `min(i, 3)` seconds; reorder reset; sender counter preserved | `src/twice.c:324`, `:331` |
+| MTU discovery | Client-only binary search 576 to 9000; 2 tries at 500 ms; failure yields 576; observed 9000 path gives `tun_mtu` 8938 and interface MTU 8922 | `src/twice.c:718`, `include/twice.h:59` |
+| Socket setup | Requests 4 MiB buffers; server is dual-stack where available | `src/twice.c:204`, `:208` |
+| TUN framing | Linux raw; macOS and OpenBSD 4-byte family header, with writes under 20 bytes returning 0; other BSDs raw | `src/os.c:213`, `:224`, `:255` |
+| Config commands | Exact argv and order per OS and role, including default-route suppression and teardown | `src/os.c:414` |
 
-## 1. Inspect and freeze the inputs
+**Seed ledger entries for X1:** public zero-key mode, fixed-nonce keyed probes, unauthenticated probe reflection, replay-driven peer-address change, replayed old-epoch reset, remote client reconnect on a bad datagram, non-atomic `genkey` permissions, `atoi` overflow (undefined behavior), and the late-probe-reply path.
 
-Read applicable repository instructions and inspect existing work before changing anything. Reuse an existing port if present; otherwise establish a small Rust project without creating a remote repository unnecessarily.
+## Baseline
 
-The research starting points are:
+Measured 2026-11-23 on Apple M5 Max, 18 cores, 48 GiB, with Linux AArch64 7.2 under OrbStack.
 
-- Twice: `391c461697c871e542c7beb44631e77e4c5646dd`
-- My Graviola fork: `6f7117267119f58a675ec17a1431cb0f0337fac1`
-- Potential implementation material: https://github.com/jedisct1/rust-hiae
+| Check | Result |
+| --- | --- |
+| Twice C build | 1.1 s, 68,408-byte stripped binary |
+| Real C tunnel in namespaces | Keyed, no-key, and `-d` all passed ping and TCP, exited 0, and left no rules behind |
+| `rust-hiae` vs C on ARM NEON and ARM SHA3 | 10,620 byte-identical cases. This qualifies it as a second vector source only |
+| Graviola merged base, AArch64 | 220 tests pass, about 6 s warm |
+| Graviola `main` x86-64 lib tests under QEMU `-cpu max` | 174 pass in 64 s cold. QEMU exposes VAES but not AVX512 |
 
-Check whether the repositories have advanced. Record any difference before selecting the baseline. Do not silently move the reference during optimization.
+**Known false red:** Graviola's 8 `cavp` tests fail unless you run `git submodule update --init thirdparty/cavp thirdparty/wycheproof`.
 
-Pin the chosen Twice revision, the exact hash of its bundled `src/HiAE_amalgamated.c`, and the Graviola revisions used by each result. Preserve licenses and attribution for adapted code.
+**Host caveat:** `perf-gate-ready` reported `constrained` because swap was about 88% used. Timing claims need the rule in **Performance acceptance**. Memory and allocation measurements always run.
 
-Keep the original C source available as an immutable oracle. Instrumented test adapters must be separate and their patches recorded. Final performance comparisons must include the ordinary C executable, not only an extracted approximation.
+## Sequence
 
-Maintain one authoritative `plan.md` with:
+Items in one workstream run in order. Parallel-safe sets after G0: `{H*}` in Graviola, `{T1, T2, T3}` in `src/`, `{S1, D1}` in `oracle/` and `xtask/src/diff/`, and `{B1, B2}` in `bench/` and `xtask/src/bench/`.
 
-- Scope and compatibility contract.
-- Milestones and evidence required.
-- Verified, failed, blocked, and unverified gates.
-- Current best pair of Twice/Graviola commits.
-- Important upstream discrepancies.
-- Rejected experiments and their results.
-- The next executable action.
+### Phase 0: ground
 
-Use machine-readable manifests and benchmark results where appropriate. Avoid creating overlapping status documents.
+**G0: repo, pins, command surface.** Owns all root files, `oracle/upstream`, `xtask/src/main.rs`, `compat/`, `LICENSE`. Commit the owner's staged `rust-toolchain.toml` unchanged in the first commit. Create the workspace, Graviola branch per P3 (push it), pinned container image by digest, and subcommands `doctor`, `oracle`, `test`, `crypto-diff`, `diff`, `lab`, `platform-check`, `bench`, `mem`, `compare`, and `resume`.
+Acceptance: `cargo xtask doctor && cargo xtask oracle verify` reports the toolchain, both pins, the C hash, and container capabilities, and fails on a modified oracle file.
 
-## 2. Define exactness before implementing
+### Phase 1: parity and completeness
 
-Exactness means matching observable behavior for defined upstream operations, including:
+**H1: HiAE on AArch64.** Prereq G0. Owns Graviola `low/aarch64/hiae.rs`, `mid/hiae.rs`, `tests/hiae*`, and exports. Implements P4 to P6 with a NEON kernel. Covers every case in **Crypto correctness**.
+Acceptance: `cargo xtask crypto-diff --backend arm-neon` and `cargo test --locked -p graviola` in Graviola.
 
-- Datagram bytes and cryptographic outputs.
-- CLI arguments, defaults, option ordering, and exit behavior.
-- Packet acceptance, delivery order, duplication handling, and loss behavior.
-- Reordering, timeouts, peer changes, counter handling, and reconnects.
-- MTU discovery and configuration.
-- Platform-specific TUN framing.
-- Routing/firewall setup and cleanup.
+**H2: HiAE on x86-64 AES-NI.** Prereq H1. Owns Graviola `low/x86_64/hiae.rs`.
+Acceptance: `cargo xtask crypto-diff --backend aesni --qemu`. This proves bytes only, and native proof is on **Needs environment**.
 
-It does not require copying C structure layouts, allocation strategies, or undefined behavior.
+**T1: pure protocol core.** Prereq G0. Owns `src/{cli,proto,reorder,mtu,config}.rs`. No I/O in decision logic.
+Acceptance: `cargo test --locked -p twice --lib`.
 
-Normalize only genuinely nondeterministic output, such as generated randomness, assigned interface names, and platform-specific error text. Document each normalization.
+**S1: deterministic oracle.** Prereq G0. Owns `oracle/shim/`, `oracle/cases/`, `xtask/src/diff/`. Implements P11, a JSONL trace format, replay, normalization, and delta-debugging minimization.
+Acceptance: `cargo xtask diff --self-check` replays a trace twice through C with identical results, and fails on a deliberately altered expected event.
 
-Use the source as the behavioral authority. For example, the current key loader accepts trailing bytes beyond the first 32, and `-m`/`-d` ordering affects discovery. Do not accidentally “correct” such behavior while claiming an exact port.
+**T2: Linux tunnel vertical slice.** Prereq H1, T1. Owns `src/{main,tunnel,crypto}.rs`, `src/os/{mod,linux}.rs`. Implements the single-threaded poll loop and full Linux configuration.
+Acceptance: `cargo xtask lab smoke --client rust --server c --key` then `--client c --server rust --key`, each passing traffic in both directions.
 
-Keep a compatibility discrepancy ledger. Each entry needs:
+**D1: behavioral corpus.** Prereq S1, T2. Owns `oracle/cases/**` and fixes in `src/` by handoff from T-series. One named case per **Behavior inventory** row, plus: in-order, duplicates, gaps, reverse bursts, slot collisions, window boundaries, jumps, unexpected first counters, peer restarts, old epochs, near-wrap counters, timeout boundaries, multiple gaps, truncation, invalid tags, malformed and oversized datagrams, send pressure, `EINTR`, TUN write failures, reconnect errors, MTU outcomes, CLI and key-file edges. Add seeded generated traces and save each minimized disagreement.
+Acceptance: `cargo xtask diff --all` passes, and `cargo xtask diff --mutation-check` shows at least one failing case for each of a fixed set of deliberate Rust faults, one per inventory area.
 
-- A minimal reproducer.
-- Observed C behavior.
-- Rust behavior.
-- Whether the difference is defined behavior, an oracle defect, or an intentional deviation.
-- The milestone affected.
+**I1: real interoperability.** Prereq T2. Owns `xtask/src/lab/`. Runs the 4-way client/server matrix in keyed and no-key modes, with forward, reverse, and simultaneous traffic, real TUN, routing, MTU discovery, disconnect and reconnect, and teardown. Adds a routed topology for forwarding. Asserts rules exist while running and are gone after exit.
+Acceptance: `cargo xtask lab matrix`.
 
-Do not reproduce memory corruption or undefined behavior. Record those cases explicitly instead of silently weakening the compatibility claim.
+**T3: macOS and BSD paths.** Prereq T2. Owns `src/os/{macos,bsd}.rs`. Ports every upstream path. Tests framing with socket pairs.
+Acceptance: `cargo test --locked -p twice os::` on macOS, and `cargo xtask platform-check` for FreeBSD, NetBSD, OpenBSD, and DragonFly targets, using `-Zbuild-std` where no prebuilt std exists. A target that cannot check is `BLOCKED` with the exact error. Compilation is never reported as runtime validation.
 
-Protocol redesign, new ciphers, multi-peer operation, and multi-link features are outside the initial campaign. Preserve compatibility before considering them.
+**B1: benchmark suite and frozen policy.** Prereq G0, may run beside phase 1. Owns `bench/`, `xtask/src/bench/`. Implements Layers A to C, memory, `compare`, and screening and final suites with JSON and readable summaries. Measures C and A/A repeatability, then commits `bench/manifest.json` and `bench/policy.json` before any optimization.
+Acceptance: `cargo xtask bench --suite screen --candidate c --baseline c` emits a valid result with every required metadata field.
 
-## 3. Add exact HiAE support to Graviola
+### Phase 2: hardening
 
-The finished tunnel must use the implementation in my Graviola fork. Adding Graviola only for randomness while retaining another production crypto backend does not satisfy this requirement.
+**X1: security characterization.** Prereq D1. Owns `compat/ledger.json`. Records a reproducer for each seed entry.
+Acceptance: `cargo xtask diff --ledger` runs every reproducer and fails on an undecided entry.
 
-Implement the actual HiAE construction used by Twice’s pinned C implementation:
+**B2: parity measurement.** Prereq D1, I1, B1. Runs the final suite on the best pair.
+Acceptance: `cargo xtask bench --suite final --candidate rust --baseline c && cargo xtask compare --policy bench/policy.json` produces per-case verdicts.
 
-- 32-byte keys.
-- 16-byte nonces.
-- 16-byte authentication tags.
-- Exact encryption, decryption, MAC, and verification semantics.
+### Phase 3: linux target completion
 
-Twice’s encrypted mode uses the entire 16-byte header as its nonce and empty associated data.
+**L1: musl builds.** Prereq T2. Owns release profile and `xtask/src/release.rs`. Builds Linux x86-64 and AArch64 musl. Runs the AArch64 build natively through I1.
+Acceptance: `cargo xtask lab matrix --rust-target aarch64-unknown-linux-musl`. The x86-64 build is `UNVERIFIED` at runtime until the **Needs environment** command passes.
 
-Its MAC mode initializes HiAE, absorbs the payload as associated data, and finalizes with zero plaintext length. Implement that exact construction. It is not HMAC, GMAC, or encryption followed by discarding the ciphertext.
+### Phase 4: optimization
 
-### API and architecture
+Starts only after D1, I1, and B2. For each experiment: state the bottleneck and mechanism, make the smallest change, run affected correctness checks and paired benchmarks, keep or revert on evidence, and append to `results/experiments.jsonl`.
 
-Fit the existing Graviola architecture:
+**O1: ARM SHA3 kernel.** Prereq B2. C selects this backend on the primary host, so required comparisons use it. Acceptance: `cargo xtask crypto-diff --backend arm-sha3` plus paired Layer A.
 
-- A small safe public API.
-- Safe construction and validation code in the appropriate layer.
-- Architecture-specific unsafe kernels in the low-level layer.
-- Existing conventions for CPU checks, constant-time comparison, errors, and secret handling.
+**O2: tunnel optimization, in order:** compact reorder metadata and storage, reusable buffers and avoidable copies, allocation-free in-place crypto, in-order fast path, empty-window and timeout cost, Graviola backend gaps, bounded batching. Batching must pass fairness, ordering, latency, and error checks with no long stall in the opposite direction. Oversized accepted datagrams keep a valid storage path. Acceptance per experiment: `cargo xtask diff --all`, `cargo xtask lab matrix`, and `cargo xtask compare` on affected cases.
 
-Provide allocation-free operations using caller-owned buffers. An explicitly designed safe in-place API is desirable if it materially reduces tunnel copies. Do not manufacture overlapping Rust references to simulate one.
+**O3: stretch.** Targets are at least 10% improvement in a CPU-limited throughput, packet-rate, or CPU-per-byte workload, at least 25% lower RSS in representative ordinary workloads, and lower allocation and retained memory under reorder pressure. Confirm each win with a fresh run or held-out trace. Missing a stretch target does not fail the campaign. Stop when two consecutive experiments give no confirmed gain.
 
-Specify authentication-failure behavior. Unauthenticated plaintext must never be delivered to the tunnel. Preserve or strengthen the library’s output-clearing and secret-handling conventions without changing successful wire output.
+### Phase 5: close
 
-HiAE needs AES round operations, not the full AES block-encryption API. Add suitable internal kernels instead of contorting the construction through AES-GCM or keyed full-AES operations.
+**C1.** Remove bring-up FFI from production paths, and prove liveness with `dead-code-archaeology`. Run an independent `review`, and fix its P1 and P2 findings. Write `docs/report.md` with the final handoff. Close lanes per the [campaign reference](/Users/josh/.claude/skills/orchestrate/references/campaigns.md#close-or-pause).
+Acceptance: `cargo xtask resume --verify-final` rebuilds the best pair from a clean checkout, then reruns `crypto-diff`, `diff --all`, `lab matrix`, and `compare`.
 
-A narrowly scoped optional feature is acceptable if it fits the fork. Avoid unrelated feature-system or dependency rewrites.
+## Acceptance
 
-### Reuse and backend development
+Correctness and interoperability must pass before any performance result can qualify a candidate.
 
-Inspect `jedisct1/rust-hiae` as potential implementation material, but prove compatibility against Twice’s exact bundled C implementation before adopting it.
+| Deliverable | Proof | Fails when |
+| --- | --- | --- |
+| Frozen, attributed inputs | `cargo xtask oracle verify` | Any pin, hash, or license notice differs |
+| HiAE and HiAE-MAC in Graviola | `cargo xtask crypto-diff --all-available` and Graviola tests | Any byte differs, or a backend was not actually selected |
+| No C crypto in production | `cargo tree -e normal` and symbol check in `resume --verify-final` | Production graph or binary contains `HiAE_` C symbols or builds C |
+| Rust behavioral parity | `cargo xtask diff --all`, `--mutation-check` | Any unledgered difference or surviving mutation |
+| Real interop | `cargo xtask lab matrix` | Any cell, direction, mode, or teardown check fails or is skipped |
+| Benchmark suite | `cargo xtask bench --suite screen` and `final` | Required metadata or raw data is missing |
+| Performance and memory parity | `cargo xtask compare --policy bench/policy.json` | Any required case is a confirmed regression |
+| Findings and limits | `cargo xtask diff --ledger`, `docs/report.md` | Any undecided entry, or a gate state is omitted |
+| Reproducibility | `cargo xtask resume --verify-final` | A clean checkout cannot reproduce the pair |
 
-Inspect its backend selection and fallback behavior. Do not import a secret-indexed software S-box path into production while claiming constant-time behavior.
+**Not sufficient for completion:** a build, Rust-only interop, one happy-path transfer, a microbenchmark win, a skipped privileged test, a cross-compile, or an unexercised backend.
 
-Start with a correct construction and the native backend available on the development host. Then implement the backend coverage needed for the declared targets:
+### Crypto correctness
 
-- x86-64 AES-NI.
-- AArch64 AES/NEON.
-- VAES/AVX512 and ARM SHA3 paths where the C reference uses them and measurements justify the work.
-- A constant-time software path where needed to preserve the declared support envelope.
+Fixed vectors and C differentials cover empty messages, empty and nonempty AD, every length 0 to 512, lengths around each block boundary, typical packets, jumbo sizes, 65,507 and 65,536 bytes, unaligned buffers, encryption and decryption in both directions, exact MAC equality, corruption of ciphertext, nonce, AD, key, and tag, buffer-boundary rejection, zeroised output on failure, and forced runs of every available backend. Use published HiAE vectors plus the pinned C oracle. Randomized cases use recorded seeds and minimized failures. Run existing Graviola tests for affected functionality, and include other algorithms if shared dispatch or secret handling changes. Never call this HiAE implementation formally verified.
 
-Reuse Graviola’s dispatch machinery where appropriate. Check exactly the CPU features each kernel needs. Do not weaken requirements globally for unrelated algorithms or accidentally impose AES-GCM-specific requirements on HiAE.
+### Benchmark coverage
 
-Verify secret cleanup for every register class used by new kernels.
+- **Layer A, crypto:** encrypt, successful decrypt, failed verify, MAC generate and verify at small, MTU, jumbo, and larger diagnostic sizes, with per-operation overhead and throughput. Record the selected backend. The required comparison is automatic best backend against automatic best backend. Matched backends are diagnostic. Never disable C's fastest path.
+- **Layer B, packet path:** framing, full packet processing, buffer insert and drain, timeout processing, and peer resets, using in-order, sparse reorder, nearly full window, repeated gaps and recovery, repeated resets, and large payloads. Record time per packet, allocation count and volume, and retained capacity. The normal packet path targets zero allocations after initialization.
+- **Layer C, tunnel:** TCP goodput, UDP offered and received rate, loss, duplication, ordering, small-packet rate, CPU per delivered GiB and packet, and latency distributions at fixed load and saturation, in forward, reverse, and duplex. Include a direct no-tunnel ceiling and impairments: clean, delay, isolated and burst loss, reorder and duplication, constrained MTU. Loaded latency uses an independent probe stream.
+- **Memory:** per endpoint and combined, excluding generators: virtual size, requested and live heap, retained capacity, idle RSS, RSS under matched load, peak RSS under identical reorder pressure, memory retained after drain, stack use, and granted socket buffers and kernel memory where observable. Use a fresh process per peak phase and identical payload and occupancy traces, with ordinary and large datagrams. Linux RSS/PSS and macOS physical footprint are reported separately. A memory win may not come from a smaller window, rejected inputs, a shorter timeout, dropped traffic, or kernel buffering.
 
-Temporary C FFI is permitted for bring-up and testing. The completed production cryptographic path must not depend on the C reference or require compiling bundled C crypto.
+### Performance acceptance
 
-### Crypto correctness gate
+`bench/policy.json` is frozen before optimization and is never widened after seeing a candidate.
 
-Create fixed vectors and differential tests for:
+- **Recorded for every run:** both commits, binary hashes, toolchains, full build flags, target, libc, CPU, crypto backend, MTU, granted socket buffers, offloads, generator version and config, core budget and affinity, power and thermal state, competing load, seeds, raw results, and invalid-run reason.
+- **Builds:** compare equivalent release builds. Host-tuned Rust is compared with C's native flags, and portable builds are reported separately.
+- **Design:** equal endpoint cores, warm-up, ABBA pairs, at least 5 for screening and 20 for final. Use a seeded 10,000-resample bootstrap of per-run paired log ratios for a 95% interval.
+- **Timing band:** `max(1%, 2 × A/A interval half-width)`, capped at 3%. If A/A needs more than 3%, the case is `INCONCLUSIVE`.
+- **Memory tolerance:** `max(one page, observed A/A spread)`, capped at 2% of the C value.
+- **Verdict, oriented so higher is better:** `FASTER` if the lower bound is above 0. `WITHIN MARGIN` if the lower bound is at or above minus the band. `REGRESSION` if the upper bound is below minus the band, which blocks the gate. Otherwise `INCONCLUSIVE`.
+- **Invalid run:** either endpoint crashes or exits nonzero, generator saturates, the direct ceiling is under 1.25x the tunnel result, granted buffers or offloads differ between arms, thermal throttling is reported, or `perf-gate-ready -1` reports overlap. Retain the sample and reason.
+- **Busy host:** check `perf-gate-ready` once. If it is not ready, do not wait. Absolute and sub-10% timing cases are `INCONCLUSIVE`, and the owner's rerun goes on **Needs environment**. Memory, allocation, and work-count gates still run.
+- **Reporting:** every result is per case. A geometric mean never decides a gate. Equivalence is reported as "within the declared margin", never "faster".
 
-- Empty messages and empty/nonempty associated data.
-- Partial blocks and lengths around every relevant processing boundary.
-- Typical packet sizes, jumbo sizes, and larger accepted inputs.
-- Unaligned buffers.
-- Encrypt/decrypt interoperability in both directions.
-- Exact MAC equality.
-- Corrupted ciphertext, nonce, associated data, key, and tag.
-- Safe buffer boundaries and authentication-failure output behavior.
-- Every available backend, including forced backend tests.
+## Needs environment
 
-Compare bytes, not merely successful self-round-trips.
+Each item stays visible and does not hold local completion open.
 
-Use independently published vectors where available in addition to the pinned C oracle. Retain reproducible randomized differential cases and minimize every disagreement.
+| Proof | Needed | Owner command |
+| --- | --- | --- |
+| Final timing gates if the host is busy | Quiet primary host | `cargo xtask bench --suite final --candidate rust --baseline c && cargo xtask compare --policy bench/policy.json` |
+| Native x86-64 Linux, AES-NI, musl runtime, performance | x86-64 Linux host with Graviola's baseline CPU features and `CAP_NET_ADMIN` | `cargo xtask lab matrix --rust-target x86_64-unknown-linux-musl && cargo xtask bench --suite final --candidate rust --baseline c` |
+| VAES/AVX512 kernel, justified by measurement | AVX512+VAES x86-64 host | `cargo xtask bench --suite final --layer crypto --backend-report`. Implement the kernel only if C's backend beats AES-NI Rust outside the band |
+| Bare-metal Linux AArch64 performance | Non-virtualized host | `cargo xtask bench --suite final --candidate rust --baseline c` |
+| Native macOS utun, routes, teardown | `sudo` on a dedicated Mac or VM with no production routes | `sudo cargo xtask lab native-macos` |
+| FreeBSD, OpenBSD, NetBSD, DragonFly runtime | Dedicated VM for each | `cargo xtask lab native-bsd --os <name>` |
 
-Run existing Graviola gates for affected functionality. Changes to shared dispatch or secret-handling machinery require relevant existing-algorithm coverage.
+## Execution boundary and non-goals
 
-Do not describe the new HiAE implementation as formally verified merely because unrelated Graviola routines have verification evidence.
+**Authorized:** local commits in this repo on `master`. Clone and commit in `~/repos/graviola`. Push `twice-hiae` to `laputa-systems/graviola`. Install the pinned toolchain's targets. Pull and run disposable containers with `NET_ADMIN`, `SYS_ADMIN`, `MKNOD`, `/dev/net/tun`, and unconfined seccomp and AppArmor. Change routes, firewall rules, and sysctls only inside namespaces created by that container.
 
-## 4. Build a deterministic behavioral oracle
+**Forbidden:** pushing this repo, pushing any other Graviola branch, force-pushing, opening PRs or issues upstream, publishing packages, creating remotes, changing either toolchain file, running formatters, changing CI, `--privileged` containers, host-network containers, using `sudo` on the macOS host, touching the operator's routes or firewall, and stopping or altering other containers. Destructive git operations are limited to branches and worktrees this campaign created.
 
-Create an unprivileged differential harness around the real C implementation.
+**Non-goals:** protocol redesign, new ciphers, multi-peer or multi-link operation, fixing inherited security weaknesses, an async or multithreaded architecture before measurement requires it, a dashboard or general benchmark platform, rewriting cold code without evidence, and WireGuard as an acceptance oracle. WireGuard may appear only as a labeled informational comparator after O2.
 
-Inject or control:
-
-- Randomness.
-- Monotonic time.
-- Incoming datagrams and TUN packets.
-- TUN writes.
-- Relevant socket/TUN errors and readiness events.
-- External configuration commands.
-
-Keep the original state-transition and cryptographic logic intact. A second handwritten interpretation of the README is not an oracle.
-
-Replay identical logical input, time, and error traces through C and Rust. Compare transmitted datagrams, delivered packets, reconnects, configuration actions, and other observable decisions.
-
-Keep deterministic randomness strictly inside test builds.
-
-Cover:
-
-- In-order delivery, duplicates, gaps, reverse bursts, and slot collisions.
-- Window boundaries and jumps beyond the window.
-- First packets with unexpected counters.
-- Peer restarts, old-epoch packets, and counter arithmetic near wrap.
-- Timeout boundaries and multiple buffered gaps.
-- Truncation, invalid tags, malformed input, and oversized datagrams.
-- Send pressure, interrupted calls, TUN write failures, and reconnect errors.
-- MTU probes and discovery outcomes.
-- CLI and key-file edge cases.
-
-Preserve the current 1,024-packet reorder window and strict greater-than-2,000-ms timeout behavior, including the periodic checking policy. Reducing those values is not an optimization of the exact port.
-
-Characterize security-relevant inherited behavior, including the public zero-key mode, fixed-nonce probes, epoch changes, and peer-address updates. Record concrete findings; do not silently invent a new protocol to remove them.
-
-Use fuzzing and generated state-machine traces to find disagreements, then save minimized regression cases. Tests should assert observable behavior or important invariants, not internal Rust layout.
-
-## 5. Implement a small Rust tunnel
-
-Start with a direct, understandable implementation of the original event-loop architecture.
-
-Prefer:
-
-- A single-threaded loop.
-- Explicit packet ownership and reusable buffers.
-- A small platform/syscall layer.
-- Graviola as the cryptographic dependency.
-- Minimal production dependencies.
-
-Do not introduce an async runtime, task-per-packet architecture, or multithreading before measurement identifies a need.
-
-Keep platform behavior explicit. Linux TUN and macOS utun framing are not identical. Preserve the upstream platform surface and track validation separately.
-
-Prioritize:
-
-1. Native Linux development and local integration tests.
-2. Linux x86-64 and AArch64 musl builds and native validation.
-3. Native macOS AArch64 validation.
-4. The original BSD paths, with honest implementation and execution status.
-
-A successful cross-build does not establish runtime compatibility or native performance. Do not silently remove upstream-supported platforms.
-
-Pin Graviola by a reproducible revision for every committed result. Local path overrides are fine during development, but another checkout must be able to reproduce the tested dependency graph.
-
-## 6. Establish real C/Rust interoperability
-
-In both keyed and no-key modes, run:
-
-| Client | Server |
-|---|---|
-| C | C |
-| Rust | C |
-| C | Rust |
-| Rust | Rust |
-
-Exercise forward, reverse, and simultaneous bidirectional traffic.
-
-Include real TUN operation, routing, MTU discovery, disconnect/reconnect, and teardown. A crypto vector or UDP echo test does not replace this gate.
-
-Use disposable Linux namespaces and veth links for the primary local topology. Add a routed topology when necessary to validate forwarding behavior.
-
-Run the automatic configuration paths inside isolation. The benchmark must not rewrite the operator’s normal default route or firewall.
-
-On macOS/BSD, use a documented isolated or dedicated test arrangement. Do not invent native results from Linux emulation.
-
-If privileges or a native host are unavailable, mark the affected gate BLOCKED, record the precise missing capability, and continue independent work.
-
-## 7. Deliver a usable local benchmarking suite
-
-Provide a small local command interface for:
-
-- Checking prerequisites.
-- Building and identifying the C reference.
-- Running compatibility checks.
-- Running crypto/component benchmarks.
-- Running real-tunnel benchmarks.
-- Running memory workloads.
-- Comparing two recorded results.
-- Resuming the campaign.
-
-A Rust `xtask` or small script-based runner is sufficient. Use established local traffic tools where they meet the requirement. Avoid building a dashboard or general benchmarking platform.
-
-Provide a short screening suite and a stronger final validation suite. Both must emit machine-readable data and a readable summary.
-
-### Layer A: crypto
-
-Measure C HiAE versus Graviola HiAE for:
-
-- Encryption.
-- Successful decryption.
-- Failed verification.
-- MAC generation and verification.
-
-Include small packets, representative MTU-sized packets, jumbo packets, and larger diagnostic sizes. Measure fixed per-operation overhead as well as throughput.
-
-Record the actual selected backend. Compare automatic best-backend operation; matched-backend comparisons are additional diagnostics.
-
-Do not disable the C implementation’s fastest supported path to obtain a Rust win.
-
-### Layer B: packet processing and reordering
-
-Measure framing, complete packet processing, buffer insertion/drain, timeout processing, and peer resets.
-
-Use:
-
-- In-order traffic with no buffering.
-- Sparse reordering.
-- A nearly full reorder window.
-- Repeated gaps and recovery.
-- Repeated resets.
-- Large accepted payloads.
-
-Record time per packet, allocation count, allocation volume, and retained capacity.
-
-The normal packet path should aim for zero allocations after initialization. If uncommon oversized inputs need a different storage path, measure it.
-
-### Layer C: end-to-end tunnels
-
-Measure:
-
-- TCP goodput.
-- UDP offered/received rates, loss, duplication, and ordering.
-- Small-packet packet rate.
-- CPU time per delivered GiB and per delivered packet.
-- Latency distributions at fixed offered load and under saturation.
-- Forward, reverse, and duplex behavior.
-
-Use a direct/no-tunnel run to identify the testbed ceiling. A saturated generator or underlay cannot establish that the candidate is faster.
-
-Include a compact impairment set: clean transport, delay, isolated/burst loss, reordering/duplication, and constrained MTU.
-
-Measure loaded latency with an independent probe stream or equivalent method that does not hide stalls when the system slows down.
-
-Keep most combinatorial edge cases in deterministic tests. The full benchmark matrix should remain practical to rerun.
-
-### Memory
-
-Measure each endpoint and the combined tunnel endpoints, excluding traffic generators.
-
-Report separately:
-
-- Virtual/reserved address space.
-- Requested/live heap and retained capacity.
-- Idle resident memory.
-- Resident memory under matched useful load.
-- Peak resident memory under identical reorder pressure.
-- Memory retained after draining that pressure.
-- Relevant stack usage.
-- Kernel socket-buffer settings and memory where observable.
-
-Use fresh processes when measuring separate peak-memory phases. Document platform-specific accounting; Linux RSS/PSS and macOS physical footprint are not interchangeable.
-
-The C implementation’s roughly 64 MiB reorder capacity is not automatically its resident footprint.
-
-Use identical payload and occupancy traces. Include ordinary packets and large accepted datagrams. Do not obtain a memory win by shrinking the window, rejecting more inputs, shortening the timeout, dropping traffic, or moving buffering into the kernel.
-
-## 8. Make comparisons fair and claims explicit
-
-Freeze a machine-readable case manifest and acceptance policy before optimization.
-
-Record:
-
-- Both repository commits and binary hashes.
-- Compiler/toolchain versions and complete build flags.
-- Target architecture, libc, CPU model, and crypto backend.
-- MTU, socket-buffer values actually granted, and offload settings.
-- Traffic-generator version/configuration.
-- CPU/core budget and affinity where available.
-- Power/thermal state and relevant competing load.
-- Test seeds, raw results, and invalid-run reasons.
-
-The C reference already uses optimized native build flags. Compare equivalent release builds and CPU-feature policies. Report portable/distributable builds separately from host-tuned builds.
-
-Use the same number of endpoint cores initially. More cores do not count as a free performance improvement.
-
-Pair C and Rust trials in randomized or ABBA order, with warm-up. Start with a modest screening sample; use enough independent confirmation runs to resolve the claimed difference. Bootstrap across independent runs, not correlated individual packets.
-
-Predefine invalid-run criteria. Retain rejected samples and reasons.
-
-### Required acceptance
-
-Correctness and interoperability must pass before performance results can qualify a candidate.
-
-The target for every required performance and memory case is equal or better than C.
-
-Operationally:
-
-- Establish measurement repeatability first.
-- Permit a predeclared timing equivalence band no wider than 3%, and preferably tighter when repeatability allows.
-- Report equivalence honestly as “within the declared margin,” not “faster.”
-- Set memory tolerances from observed accounting noise; do not use a large arbitrary allowance to excuse a regression.
-- A confirmed regression outside the declared band blocks the gate.
-- A noisy or underpowered result is INCONCLUSIVE.
-- Never widen the band after seeing an unfavorable candidate.
-
-Require per-case results. A geometric mean cannot hide a small-packet, duplex, memory-pressure, loss, or tail-latency regression.
-
-### Stretch goals
-
-After parity, pursue:
-
-- At least 10% improvement in a meaningful CPU-limited throughput, packet-rate, or CPU-per-delivered-byte workload.
-- At least 25% lower measured resident/physical memory in representative ordinary workloads.
-- Lower allocation overhead and retained memory under reorder pressure.
-
-These are campaign targets, not promised outcomes. Confirm wins with a fresh run or held-out trace.
-
-The meaningful success state is simultaneous performance and memory parity, with demonstrated improvements where achievable. A large memory win does not excuse an unexplained throughput regression.
-
-WireGuard may be an informational comparator later. It is not the acceptance oracle for this port, and its results must not distract from the C-versus-Rust comparison.
-
-## 9. Optimize in evidence-driven order
-
-Once the exact port passes, investigate:
-
-1. Compact reorder metadata and packet-storage layout.
-2. Reusable buffers and avoidable copies.
-3. Allocation-free crypto integration and safe in-place operations.
-4. The in-order fast path.
-5. Empty-window and timeout-processing costs.
-6. Graviola backend gaps exposed by the crypto benchmarks.
-7. Bounded receive/send batching where supported.
-
-Preserve the full upstream accepted-input domain. Replacing every reorder slot with an MTU-sized array is insufficient if the C receiver accepts larger authenticated datagrams.
-
-Use a compact normal-packet pool with an appropriate oversized-packet representation if measurements support it. Worst-case memory must still accommodate the same information.
-
-Batching needs explicit fairness, ordering, latency, and error-handling checks. It must not gain throughput by creating long stalls in another direction.
-
-For each experiment:
-
-1. State the bottleneck and expected mechanism.
-2. Make the smallest useful change.
-3. Run affected correctness checks.
-4. Run the relevant paired benchmarks.
-5. Keep or revert based on evidence.
-6. Record the result and next action.
-
-Use SIMD and small unsafe kernels where justified. Keep unsafe contracts narrow and reviewable. Do not remove authentication, bounds validation, secret cleanup, or meaningful checks to improve a benchmark.
-
-Do not spend cycles rewriting cold code unless measurements or a concrete correctness issue justify it.
-
-## 10. Run the campaign persistently
-
-Parallelize independent implementation and review work across the tunnel, Graviola, and harness. Serialize performance measurements on each host.
-
-Commit working checkpoints frequently. Every checkpoint must identify the compatible pair of repository commits.
-
-Do not declare completion because:
-
-- The project builds.
-- The Rust implementation interoperates only with itself.
-- One happy-path transfer succeeds.
-- A microbenchmark improves.
-- A required privileged test was skipped.
-- A target cross-compiles.
-- An unsupported backend was never exercised.
-
-Track milestones independently:
-
-- C reference and baseline established.
-- Graviola HiAE byte parity established.
-- Rust behavioral parity established.
-- Real C/Rust interoperability established.
-- Performance parity established.
-- Memory parity established.
-- Native platform gates established.
-- Stretch improvements confirmed.
-
-Distinguish primary-host completion from full-platform completion. Missing evidence remains visible.
-
-When blocked, complete all independent work, leave an exact reproduction command and the missing capability, and move to the next actionable item. Do not repeatedly retry an unavailable environment or spend iterations rewriting plans.
-
-When no useful optimization remains, report measured results and remaining limits honestly. Do not invent progress or silently relax goals.
+**Contract changes for the owner:** new public `graviola::aead::HiAe` API on `twice-hiae`, and `DEV-001` CPU envelope.
 
 ## Final handoff
 
-Deliver:
-
-- The working Rust tunnel.
-- HiAE and HiAE-MAC in my Graviola fork.
-- Pinned dependencies and oracle provenance.
-- Deterministic differential tests and minimized regressions.
-- Real interoperability coverage.
-- A reproducible local benchmark suite.
-- Raw data plus a concise per-case comparison.
-- Current compatibility/security findings.
-- Exact verified, failed, blocked, and unverified gates.
-- Best commit pair and commands to reproduce it.
-
-Begin now by freezing the oracle, establishing the baseline, and implementing the smallest vertical slice: Graviola HiAE produces the C reference’s packet bytes, and the Rust tunnel exchanges real traffic with the original C implementation.
+`docs/report.md` delivers: the working tunnel, HiAE and HiAE-MAC in the fork, pinned dependencies and oracle provenance, deterministic differential tests and minimized regressions, interop coverage, the benchmark suite, raw data under `results/` with a concise per-case comparison, compatibility and security findings, rejected experiments, every gate's state, and the best commit pair with commands to reproduce it.

@@ -1,0 +1,7 @@
+{
+  "commit": "twice-final",
+  "oracle": "391c461697c871e542c7beb44631e77e4c5646dd",
+  "graviola": "ad177b4a64f96274a4494e4a65d6d861c3369044",
+  "host": "Linux AArch64 under OrbStack on Apple M5 Max",
+  "note": "Correctness pair; performance gates lifted by owner 2026-11-23. Update commit after C1 lands and rerun resume --verify-final."
+}

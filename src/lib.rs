@@ -1,8 +1,11 @@
 pub mod cli;
 pub mod config;
+pub mod crypto;
 pub mod mtu;
+pub mod os;
 pub mod proto;
 pub mod reorder;
+pub mod tunnel;
 
 pub const VERSION_STRING: &str = "0.1.0";
 

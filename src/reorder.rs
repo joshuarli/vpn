@@ -3,6 +3,8 @@ use std::fmt;
 pub const WINDOW_SIZE: usize = 1024;
 pub const TIMEOUT_MS: u64 = 2000;
 pub const CHECK_INTERVAL_MS: u64 = 50;
+/// Number of earlier peer epochs remembered so their datagrams cannot be replayed.
+pub const RETIRED_EPOCHS: usize = 64;
 pub const MAX_PACKET_LEN: usize = crate::proto::MAX_PACKET_LEN;
 
 /// Monotonic clock reading with the same fields and arithmetic as the C `struct timespec`.
@@ -114,6 +116,31 @@ pub struct Reorder {
     slots: Box<[Slot]>,
     payloads: Box<[u8]>,
     last_check: Timespec,
+    retired: RetiredEpochs,
+}
+
+/// The most recent `RETIRED_EPOCHS` peer random values that a newer epoch replaced. A datagram
+/// from one of them is a replay: a restarted peer draws a fresh random value.
+struct RetiredEpochs {
+    randoms: [u64; RETIRED_EPOCHS],
+    len: usize,
+    next: usize,
+}
+
+impl RetiredEpochs {
+    const fn new() -> Self {
+        RetiredEpochs { randoms: [0; RETIRED_EPOCHS], len: 0, next: 0 }
+    }
+
+    fn contains(&self, random: u64) -> bool {
+        self.randoms[..self.len].contains(&random)
+    }
+
+    fn retire(&mut self, random: u64) {
+        self.randoms[self.next] = random;
+        self.next = (self.next + 1) % RETIRED_EPOCHS;
+        self.len = (self.len + 1).min(RETIRED_EPOCHS);
+    }
 }
 
 impl Reorder {
@@ -129,11 +156,12 @@ impl Reorder {
             slots: vec![EMPTY_SLOT; WINDOW_SIZE].into_boxed_slice(),
             payloads: vec![0u8; WINDOW_SIZE * MAX_PACKET_LEN].into_boxed_slice(),
             last_check: now,
+            retired: RetiredEpochs::new(),
         }
     }
 
     /// Reconnect reset: forgets the peer, buffered packets and statistics. The periodic check
-    /// timestamp is kept.
+    /// timestamp and the retired epochs are kept, so a replay cannot follow a reconnect.
     pub fn reset(&mut self) {
         self.expected_counter = 1;
         self.highest_processed = 0;
@@ -185,6 +213,12 @@ impl Reorder {
     ) -> Outcome {
         self.stats.received += 1;
 
+        if (!self.random_initialized || random != self.random_value) && self.retired.contains(random)
+        {
+            self.stats.duplicated += 1;
+            return Outcome::Dropped;
+        }
+
         if !self.random_initialized {
             self.random_value = random;
             self.random_initialized = true;
@@ -194,6 +228,7 @@ impl Reorder {
 
         if random != self.random_value {
             sink.diag(&Diag::PeerRestarted);
+            self.retired.retire(self.random_value);
             self.reset();
             self.random_value = random;
             self.random_initialized = true;
@@ -511,6 +546,40 @@ mod tests {
     }
 
     #[test]
+    fn an_old_epoch_replay_is_dropped_without_resetting_state() {
+        let (mut r, mut rec) = fresh();
+        for c in 1..=3 {
+            feed(&mut r, &mut rec, 0, R, c);
+        }
+        assert_eq!(feed(&mut r, &mut rec, 0, R + 7, 1), Outcome::Delivered);
+        assert_eq!(rec.diags.len(), 1);
+        assert_eq!(feed(&mut r, &mut rec, 0, R, 2), Outcome::Dropped);
+        assert_eq!(rec.diags.len(), 1);
+        assert_eq!(r.peer_random(), Some(R + 7));
+        assert_eq!(r.expected_counter(), 2);
+        assert_eq!(feed(&mut r, &mut rec, 0, R + 7, 2), Outcome::Delivered);
+        assert_eq!(rec.counters(), [1, 2, 3, 1, 2]);
+        assert_eq!(rec.diags.len(), 1);
+
+        r.reset();
+        assert_eq!(feed(&mut r, &mut rec, 0, R, 3), Outcome::Dropped);
+        assert_eq!(r.peer_random(), None);
+        assert_eq!(feed(&mut r, &mut rec, 0, R + 7, 3), Outcome::Delivered);
+        assert_eq!(rec.counters(), [1, 2, 3, 1, 2, 3]);
+    }
+
+    #[test]
+    fn retired_epochs_are_bounded_and_oldest_is_forgotten_first() {
+        let (mut r, mut rec) = fresh();
+        // 66 epochs retire 65 random values; the ring keeps the newest 64.
+        for e in 0..=RETIRED_EPOCHS as u64 + 1 {
+            feed(&mut r, &mut rec, 0, 1000 + e, 1);
+        }
+        assert_eq!(feed(&mut r, &mut rec, 0, 1001, 2), Outcome::Dropped);
+        assert_eq!(feed(&mut r, &mut rec, 0, 1000, 2), Outcome::Delivered);
+    }
+
+    #[test]
     fn epoch_change_to_counter_one_after_progress_is_delivered() {
         let (mut r, mut rec) = fresh();
         for c in 1..=50 {
@@ -519,16 +588,6 @@ mod tests {
         assert_eq!(feed(&mut r, &mut rec, 0, R ^ 1, 1), Outcome::Delivered);
         assert_eq!(rec.delivered.last(), Some(&(Delivery::Immediate, 1)));
         assert_eq!(feed(&mut r, &mut rec, 0, R ^ 1, 2), Outcome::Delivered);
-    }
-
-    #[test]
-    fn old_epoch_packet_after_restart_resets_again() {
-        let (mut r, mut rec) = fresh();
-        feed(&mut r, &mut rec, 0, R, 1);
-        feed(&mut r, &mut rec, 0, R + 1, 1);
-        assert_eq!(feed(&mut r, &mut rec, 0, R, 2), Outcome::Delivered);
-        assert_eq!(rec.diags.len(), 2);
-        assert_eq!(r.peer_random(), Some(R));
     }
 
     #[test]

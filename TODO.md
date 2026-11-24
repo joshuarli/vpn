@@ -1,15 +1,6 @@
 Prefix: VPN
 Next: 11
 
-### VPN-6 · P1 · Do not let an old-epoch replay reset reorder state
-
-- **Area:** Security
-- **Where:** src/reorder.rs:72 (random value mismatch reset), src/tunnel.rs (epoch handling)
-- **Problem:** A changed random value resets the reorder state and accepts the packet's counter, so replaying a captured datagram from an earlier epoch resets state and delivers the old payload to the TUN again; the next real packet resets it back.
-- **Recommendation:** Track the last accepted epoch or reject stale-epoch counters without resetting delivery state. Add a replay regression test.
-- **Fix with:** none
-- **Effort:** M
-
 ### VPN-4 · P2 · Authenticate before echoing probe-magic datagrams
 
 - **Area:** Security

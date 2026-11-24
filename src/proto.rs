@@ -187,9 +187,11 @@ pub enum ServerRx<'a> {
     Accepted(Accepted<'a>),
 }
 
-/// Client handling of one received datagram.
+/// Client handling of one received datagram outside MTU discovery.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ClientRx<'a> {
+    /// Fewer than 16 bytes, or a probe header: a late or replayed probe reply is never data and
+    /// must not reach the reorder stage.
     Ignored,
     /// Log the rejection and drop the datagram; the session continues. The connected socket
     /// accepts anything whose source address is the server's, so a spoofed datagram must not be
@@ -264,6 +266,9 @@ impl<C: Cipher> Codec<C> {
         let Some(frame) = Frame::parse(datagram) else {
             return ClientRx::Rejected(Rejection::TooSmall);
         };
+        if frame.header.is_probe() {
+            return ClientRx::Ignored;
+        }
         match self.open(&frame, scratch) {
             Ok(payload) => ClientRx::Accepted(Accepted { header: frame.header, payload }),
             Err(AuthError) => ClientRx::Rejected(Rejection::Auth),
@@ -566,18 +571,12 @@ mod tests {
     }
 
     #[test]
-    fn client_passes_authenticated_probe_reply_to_the_stream() {
+    fn client_ignores_a_late_probe_reply_outside_discovery() {
         let c = codec();
         let mut d = vec![0u8; 16 + 40 + 16];
         c.seal_probe(&P, 40, &mut d);
         let mut scratch = [0u8; 64];
-        match c.client_receive(&d, &mut scratch) {
-            ClientRx::Accepted(a) => {
-                assert!(a.header.is_probe());
-                assert_eq!(a.payload, &[0xAA; 40][..]);
-            }
-            other => panic!("{other:?}"),
-        }
+        assert_eq!(c.client_receive(&d, &mut scratch), ClientRx::Ignored);
     }
 
     #[test]

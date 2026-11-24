@@ -4,27 +4,28 @@ This is the single plan for this repository: all current and future work, and th
 
 ## Status
 
-- **Goal:** an exact Rust port of `jedisct1/twice` using HiAE from the `laputa-systems/graviola` fork, proven against the C original, then at performance and memory parity.
-- **Last accepted pair:** `twice-final`, the tag on the final integration commit; verify it by running `cargo xtask resume` from that same checkout (the verifier itself lives there).
-- **Accepted:** G0, H1, H2, T1, S1, T2, T3, B1, D1, X1, I1, B2-prep, L1, C1 verification. **Red:** none. Performance and memory parity were dropped by owner decision; O1–O3 are retired with them.
+- **Goal:** maintain `twice` as a standalone Rust point-to-point VPN tunnel. Byte parity with the C original, and performance and memory parity against it, were retired by owner decision; [report.md](report.md) is the historical record.
+- **Last accepted pair:** `twice-final`, the tag on the final integration commit. The oracle, harness, ledger, and verifier that proved it live in that tag, not in the working tree.
 - **Running:** none.
-- **Next slice:** none locally. BSD runtime is out of scope by owner decision 2026-11-23; macOS native runtime remains on **Needs environment** (`sudo` on `m1-max` needs a password).
+- **Backlog:** inherited weaknesses from the C original are tracked in [TODO.md](../TODO.md). Unsupported CPUs fail at startup rather than falling back to software HiAE, as a product constraint.
+- **Next slice:** triage the inherited weaknesses; macOS native runtime proof remains on **Needs environment** (`sudo` on `m1-max` needs a password). BSD runtime is out of scope by owner decision 2026-11-23.
 - **Resume:** read this Status, run `git status -sb` and `git worktree list`, then run `cargo xtask resume`.
 
-| Milestone | State |
+| Completed work (historical) | State |
 | --- | --- |
-| C reference and baseline | G0 accepted: pins, oracle build, lab image |
-| Graviola HiAE byte parity | VERIFIED arm-neon and arm-sha3 native; aesni bytes under QEMU (`ad177b4`) |
-| Rust behavioral parity | VERIFIED on primary host: 1,094 diff runs pass, 82 mutants over 21 areas killed, 19 ledger entries reproduced |
-| Real C/Rust interoperability | VERIFIED on primary host: 8 matrix cells, 422 checks, 0 not passing |
-| Native platform gates | Linux AArch64 VERIFIED by `lab matrix`; Linux x86-64 musl VERIFIED by native smoke on `threadripper`; macOS compile-checked only, native runtime on **Needs environment**; BSD out of scope by owner 2026-11-23 |
+| C reference and baseline | Accepted: pins, oracle build, lab image |
+| Graviola HiAE byte parity | Verified arm-neon and arm-sha3 native; AES-NI bytes under QEMU (`ad177b4`) |
+| Rust behavioral parity | Verified on primary host: 1,094 diff runs, 82 mutants over 21 areas, 19 ledger entries |
+| Real C/Rust interoperability | Verified on primary host: 8 matrix cells, 422 checks |
+| Performance and memory parity | Out of scope by owner decision |
+| Native platform gates | Linux AArch64 and x86-64 musl verified; macOS compile-checked only; BSD out of scope |
 
 Gate states are `VERIFIED`, `FAILED`, `BLOCKED`, `INCONCLUSIVE`, and `UNVERIFIED`. Primary-host completion and full-platform completion are reported separately.
 
 ## Campaign: Twice Rust port
 
-[Acceptance evidence](report.md) records the verified pair, gate states, compatibility findings, and remaining environment work.
+The parity campaign is closed. [Acceptance evidence](report.md) records what was verified at `twice-final` and what was never proven.
 
 ## Handoff
 
-The accepted pair, acceptance evidence, gate states, compatibility findings, and remaining environment work live in [report.md](report.md).
+The accepted pair, historical acceptance evidence, and remaining environment work live in [report.md](report.md).

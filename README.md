@@ -1,7 +1,9 @@
 # twice
 
-A Rust port of the Twice VPN tunnel. It is byte-compatible with the frozen
-C original and uses HiAE from the `laputa-systems/graviola` fork.
+A Rust point-to-point VPN tunnel using HiAE from the `laputa-systems/graviola`
+fork. It began as a byte-compatible port of `jedisct1/twice`; that compatibility
+goal is retired, and [docs/report.md](docs/report.md) records the historical
+parity evidence.
 
 ## Requirements
 
@@ -30,10 +32,9 @@ Run `./target/release/twice` with no arguments to see the full usage text.
 
 ## Verification
 
-`cargo xtask doctor` checks the toolchain, pins, oracle hash and container
-capabilities. `cargo xtask test` runs the unit suite. `cargo xtask
-resume --verify-final` checks the recorded pair from a clean checkout. See
-[docs/report.md](docs/report.md) for what is verified and what is not.
+`cargo xtask test` runs the unit suite. `cargo xtask lab smoke` runs a real
+Rust-to-Rust tunnel through network namespaces. `cargo xtask platform-check`
+checks non-Linux targets. `cargo xtask resume` prints the roadmap status.
 
 ## License
 

@@ -1,95 +1,45 @@
-# Twice Rust port — final handoff
+# Twice Rust port — historical acceptance report
 
-## Outcome
+This records the completed parity campaign. The owner has since decided to stop
+maintaining compatibility with the C implementation, so the oracle, differential
+harness, compatibility ledger, and performance/memory tooling were removed. The
+evidence below is a historical claim about the `twice-final` tag, not a live
+gate: the commands it names no longer exist. To reproduce it, check out
+`twice-final`, whose commit still contains the verifier and its inputs.
 
-The repository contains a working Rust implementation of `jedisct1/twice` using
-HiAE from the `laputa-systems/graviola` `twice-hiae` fork. On the primary host
-(Linux AArch64 in OrbStack on an Apple M5 Max) the port is byte-faithful to the
-frozen C oracle across 1,094 differential runs, interoperates with C in all
-eight client/server/keyed combinations, and every inherited deviation is
-reproduced and recorded. Correctness and interoperability are complete.
-
-Performance and memory parity are out of scope by owner decision; no parity
-claim is made for either.
-
-## Best pair and reproduction
+## Accepted pair
 
 | Item | Value |
 | --- | --- |
-| Integration commit | `twice-final` tag, recorded in `results/final-pair.json` |
+| Integration commit | `twice-final` tag, with its recorded `results/final-pair.json` |
 | Oracle | `391c461697c871e542c7beb44631e77e4c5646dd` in `oracle/upstream` |
 | Oracle `HiAE_amalgamated.c` | SHA-256 `05f745a783317f3e6dc3b0a85a71075eacd1a2a6f82711243e8f6c053c3d6f05` |
 | Graviola | `ad177b4a64f96274a4494e4a65d6d861c3369044` on `twice-hiae` |
 | Toolchain | `nightly-2026-11-09` with `rust-src`, `llvm-tools`, `clippy` |
 | Lab image | `twice-lab:b09cc3ade3a5-nightly-2026-11-09` |
 
-Reproduce the accepted correctness pair from the tagged integration checkout:
+## Recorded results at the tag
 
-```
-cargo xtask doctor
-cargo xtask resume --verify-final
-```
+- Differential oracle: 1,094 runs, 0 failures.
+- Mutation coverage: 82 mutants over 21 areas, 0 survived.
+- Compatibility ledger: 19 reproduced entries — one intentional CPU envelope,
+  nine inherited security weaknesses, nine defined quirks.
+- Real interoperability: 8 matrix cells, 422 checks, 0 not passing.
+- Unit suite: 147 passed, 0 failed on macOS arm64; one BSD-only test excluded there.
+- HiAE byte parity: verified for available backends; AES-NI bytes proven under QEMU.
+- Cross-platform compile: macOS and BSD targets compile-checked; BSD runtime was
+  removed from scope by owner decision on 2026-11-23.
 
-Run the verifier from that same checkout: the tag records the pair, and the
-fixed verifier code lives in the tagged commit. `oracle verify` checks the
-pinned oracle and Graviola rev from `Cargo.lock` without network; add
-`oracle verify --check-remote` to also compare Graviola's published branch.
+## Never proven or out of scope
 
-`resume --verify-final` creates a fresh `.work/tmp/verify-final-<stamp>` clean
-detached worktree of the recorded commit and reruns `oracle verify`, `test`,
-`crypto-diff --all-available`, `diff --self-check`, `diff --ledger`,
-`diff --all`, and `lab matrix`. Add `--with-bench` to also run the benchmark
-and comparison as informational steps; they are skipped by default because
-performance gates are lifted.
+Performance and memory parity were never accepted and are now out of scope by
+owner decision. Native macOS runtime proof needs password-enabled `sudo` on
+`m1-max`. VAES/AVX512 was never measured. Bare-metal AArch64 performance was
+moot once the performance gates were dropped.
 
-## Acceptance evidence
+## Disposition of the findings
 
-| Deliverable | Command | Result |
-| --- | --- | --- |
-| Pins, hash, toolchain, container | `cargo xtask doctor` | ok |
-| Unit suite | `cargo xtask test` | 147 passed, 0 failed on macOS arm64; one BSD-only test is excluded there, so a Linux run reports fewer (`--os` filters OS tests) |
-| HiAE byte parity | `cargo xtask crypto-diff --all-available` | verified for available backends; AES-NI bytes proven under QEMU |
-| Differential oracle | `cargo xtask diff --all` | 1,094 passed, 0 failed |
-| Mutation coverage | `cargo xtask diff --mutation-check` | 82 mutants over 21 areas, 0 survived |
-| Differential harness self-check | `cargo xtask diff --self-check` | passes |
-| Compatibility ledger | `cargo xtask diff --ledger` | 19 entries, 0 failed |
-| Real interoperability | `cargo xtask lab matrix` | 8 cells, 422 checks, 0 not passing |
-| Musl release binaries | `cargo xtask lab matrix --rust-target aarch64-unknown-linux-musl`; `cargo xtask lab release --target x86_64-unknown-linux-musl` | AArch64 static-pie: 8 cells, 422 checks, 0 not passing; x86-64 static-pie: native smoke PASS |
-| Cross-platform compile | `cargo xtask platform-check` | macOS compile-checked; BSD targets compile-checked but runtime is out of scope |
-| Clean-checkout reproducibility | `cargo xtask resume --verify-final` | PASS: 7/7 correctness gates from a fresh clean worktree at `twice-final`, using the verifier recorded in that same tag |
-
-## Findings and deviations
-
-`compat/ledger.json` records 19 entries: `DEV-001` (the intentional CPU
-envelope), nine `SEC-*` inherited security weaknesses (zero-key mode, fixed
-nonce MTU probes, unauthenticated probe reflection, replay-driven peer changes
-and epoch resets, remote reconnect on a bad datagram, non-atomic `genkey`
-permissions, `atoi` overflow, and late probe replies), and nine `QRK-*`
-defined quirks. Each has a reproducer, both implementations' observed output,
-and a class. The weaknesses are reproduced exactly and never fixed, as the
-owner required.
-
-Production dependencies are `graviola` and `libc` only. There is no C HiAE in
-the production graph and no bring-up FFI hook in the production path; Rust
-calls OS effects through `libc` as prescribed by P10.
-
-## Gate states
-
-`VERIFIED`: G0, H1, H2, T1, S1, T2, T3 (compile only), B1, D1, X1, I1,
-B2-prep, and primary-host correctness/interoperability.
-
-`OUT OF SCOPE`: performance parity and memory parity, by owner decision.
-
-## Needs environment
-
-- Native macOS `utun`, routes, and teardown: the `lab native-macos` command
-  referenced in `plan.md` is not implemented, and `sudo -n` on `josh@m1-max`
-  requires a password. This proof remains open.
-- x86-64 Linux AES-NI/musl runtime: VERIFIED on `josh@threadripper` (AMD Ryzen 9
-  9950X, Alpine x86-64). `cargo xtask lab release --target
-  x86_64-unknown-linux-musl` produced a 492,272-byte static-pie binary with no
-  `INTERP` or `NEEDED`, and a two-namespace keyed tunnel smoke passed 3/3 pings
-  in each direction with both endpoints exiting 0 and printing `Done.`.
-  VAES/AVX512 remains open: no host with those features was measured.
-- Bare-metal Linux AArch64 performance: no non-virtualized host.
-- BSD runtime: removed from scope by owner decision on 2026-11-23.
+The ledger and its normalizations are gone from the working tree. The nine
+`SEC-*` weaknesses were reproduced deliberately only because parity required it;
+they are now live backlog items in [TODO.md](../TODO.md). `DEV-001` — no software
+HiAE fallback — remains a chosen product constraint documented in the README.

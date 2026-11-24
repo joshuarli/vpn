@@ -2,7 +2,7 @@ use super::common;
 use crate::container;
 use crate::util::Result;
 
-const USAGE: &str = "usage: cargo xtask lab smoke [--key] [--discover-mtu] [--rust-target <triple>]
+const USAGE: &str = "usage: cargo xtask lab smoke [--discover-mtu] [--rust-target <triple>]
 
 --discover-mtu starts the client with -d and checks that its TUN MTU follows the discovered value.
 --rust-target runs the release binary built for that triple (aarch64-unknown-linux-musl) instead of the debug build.";
@@ -14,9 +14,8 @@ mount -o remount,rw /proc/sys 2>/dev/null || true
 mkdir -p /dev/net; [ -c /dev/net/tun ] || mknod /dev/net/tun c 10 200
 CB=@CLIENT_BIN@
 SB=@SERVER_BIN@
-KEY=""
 CARGS=""
-@KEY_SETUP@
+head -c 32 /dev/urandom > $W/vpn.key; KEY="-k $W/vpn.key"
 @DISCOVER_SETUP@
 CP=""; SP=""; IP=""
 
@@ -128,7 +127,7 @@ for n in c s; do
   diff $W/before.$n $W/after.$n > $W/teardown.$n.diff || { cat $W/teardown.$n.diff; fail "rules left behind in $n"; }
 done
 echo "teardown: routing and firewall state identical to before in both namespaces"
-echo "smoke: PASS client=@CLIENT_NAME@ server=@SERVER_NAME@ key=@KEY_NAME@"
+echo "smoke: PASS client=@CLIENT_NAME@ server=@SERVER_NAME@"
 "##;
 
 const MTU_CHECK_FIXED: &str = r##"
@@ -154,13 +153,11 @@ echo "discovered MTU applied: $want"
 "##;
 
 pub fn run(args: &[String]) -> Result<()> {
-    let mut key = false;
     let mut discover = false;
     let mut rust_target: Option<String> = None;
     let mut it = args.iter();
     while let Some(arg) = it.next() {
         match arg.as_str() {
-            "--key" => key = true,
             "--discover-mtu" => discover = true,
             "--rust-target" => {
                 rust_target = Some(it.next().ok_or_else(|| format!("--rust-target needs a triple\n\n{USAGE}"))?.clone());
@@ -173,23 +170,16 @@ pub fn run(args: &[String]) -> Result<()> {
         }
     }
     let bin = common::prepare(rust_target.as_deref())?;
-    let key_setup = if key {
-        "head -c 32 /dev/urandom > $W/vpn.key; KEY=\"-k $W/vpn.key\""
-    } else {
-        ":"
-    };
     let discover_setup = if discover { "CARGS=-d" } else { ":" };
     let mtu_check = if discover { MTU_CHECK_DISCOVER } else { MTU_CHECK_FIXED };
     let post_check = if discover { POST_CHECK_DISCOVER } else { ":" };
     let script = SCRIPT
         .replace("@CLIENT_BIN@", &bin)
         .replace("@SERVER_BIN@", &bin)
-        .replace("@KEY_SETUP@", key_setup)
         .replace("@DISCOVER_SETUP@", discover_setup)
         .replace("@MTU_CHECK@", mtu_check)
         .replace("@POST_CHECK@", post_check)
         .replace("@CLIENT_NAME@", "rust")
-        .replace("@SERVER_NAME@", "rust")
-        .replace("@KEY_NAME@", if key { "yes" } else { "no" });
+        .replace("@SERVER_NAME@", "rust");
     container::Run::new(&script).status()
 }

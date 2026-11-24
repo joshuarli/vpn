@@ -9,8 +9,8 @@ use crate::crypto::{self, HiAeCipher, UnsupportedCpu};
 use crate::mtu::{self, Discovery, Effect};
 use crate::os::{self, Fd, IfName, KeyRead, OsFailure, Shell, SockAddr};
 use crate::proto::{
-    Accepted, ClientRx, Codec, HEADER_LEN, KEY_LEN, KeyMode, MAX_DATAGRAM_LEN, MAX_PACKET_LEN,
-    Sender, ServerRx, TAG_LEN,
+    Accepted, ClientRx, Codec, ENCRYPTED_BANNER, HEADER_LEN, KEY_LEN, MAX_DATAGRAM_LEN,
+    MAX_PACKET_LEN, Sender, ServerRx, TAG_LEN,
 };
 use crate::reorder::{Delivery, Diag, Reorder, Sink};
 use crate::{EVENT_POLL_TIMEOUT_MS, RECONNECT_ATTEMPTS, reconnect_delay_secs};
@@ -73,11 +73,7 @@ fn genkey(path: &OsStr) -> i32 {
     0
 }
 
-fn load_key(key_file: Option<&OsStr>) -> Result<([u8; KEY_LEN], KeyMode), i32> {
-    let Some(path) = key_file else {
-        os::out(KeyMode::AuthOnly.banner().as_bytes());
-        return Ok(([0; KEY_LEN], KeyMode::AuthOnly));
-    };
+fn load_key(path: &OsStr) -> Result<[u8; KEY_LEN], i32> {
     match os::read_key_file(&c_string(path.as_bytes())) {
         KeyRead::OpenFailed => {
             os::err(&cli::key_open_failed_stderr(path));
@@ -88,8 +84,8 @@ fn load_key(key_file: Option<&OsStr>) -> Result<([u8; KEY_LEN], KeyMode), i32> {
             Err(cli::EXIT_FAILURE)
         }
         KeyRead::Loaded(key) => {
-            os::out(KeyMode::Keyed.banner().as_bytes());
-            Ok((key, KeyMode::Keyed))
+            os::out(ENCRYPTED_BANNER.as_bytes());
+            Ok(key)
         }
     }
 }
@@ -138,7 +134,7 @@ fn start(run: Run) -> i32 {
         return cli::EXIT_FAILURE;
     }
 
-    let (mut key, key_mode) = match load_key(run.key_file.as_deref()) {
+    let mut key = match load_key(&run.key_file) {
         Ok(v) => v,
         Err(code) => return code,
     };
@@ -151,7 +147,7 @@ fn start(run: Run) -> i32 {
             return cli::EXIT_FAILURE;
         }
     };
-    let codec = Codec::new(cipher, key_mode);
+    let codec = Codec::new(cipher);
 
     let mut packet_random = [0u8; 8];
     if !os::random_bytes(&mut packet_random) {

@@ -1,15 +1,6 @@
 Prefix: VPN
 Next: 11
 
-### VPN-2 · P1 · Require a key for authenticated operation
-
-- **Area:** Security
-- **Where:** src/proto.rs:101 (KeyMode::AuthOnly), src/crypto.rs (key loading)
-- **Problem:** Without -k the program loads an all-zero key and authenticates each datagram with HiAE_mac under that public key, so anyone who knows the protocol can forge a valid tag and payloads travel in cleartext. Any client can reach this by omitting -k.
-- **Recommendation:** Make keyed mode mandatory by default and gate auth-only mode behind an explicit, clearly named flag that warns at startup, or remove it. Add a test that a missing key is rejected unless explicitly opted in.
-- **Fix with:** none
-- **Effort:** M
-
 ### VPN-3 · P1 · Stop reusing a fixed nonce for keyed MTU probes
 
 - **Area:** Security

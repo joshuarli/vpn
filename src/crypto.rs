@@ -58,41 +58,35 @@ impl Cipher for HiAeCipher {
     ) -> Result<(), AuthError> {
         self.inner.decrypt(nonce, &[], inout, tag).map_err(|_| AuthError)
     }
-
-    fn mac(&self, nonce: &[u8; HEADER_LEN], data: &[u8]) -> [u8; TAG_LEN] {
-        self.inner.mac(nonce, data)
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::proto::{Codec, KeyMode, ServerRx, Header};
+    use crate::proto::{Codec, ServerRx, Header};
 
     #[test]
-    fn keyed_and_auth_only_round_trip_through_the_codec() {
-        for (key, mode) in [([9u8; KEY_LEN], KeyMode::Keyed), ([0u8; KEY_LEN], KeyMode::AuthOnly)] {
-            let codec = Codec::new(HiAeCipher::new(key).unwrap(), mode);
-            let header = Header { random: 7, counter: 3 };
-            let payload = [0x45u8; 100];
-            let mut out = vec![0u8; 16 + payload.len() + 16];
-            let n = codec.seal(&header, &payload, &mut out);
-            assert_eq!(n, out.len());
-            let mut scratch = vec![0u8; 128];
-            match codec.server_receive(&out, &mut scratch) {
-                ServerRx::Accepted(a) => {
-                    assert_eq!(a.header, header);
-                    assert_eq!(a.payload, &payload[..]);
-                }
-                other => panic!("{other:?}"),
+    fn datagrams_round_trip_through_the_codec() {
+        let codec = Codec::new(HiAeCipher::new([9u8; KEY_LEN]).unwrap());
+        let header = Header { random: 7, counter: 3 };
+        let payload = [0x45u8; 100];
+        let mut out = vec![0u8; 16 + payload.len() + 16];
+        let n = codec.seal(&header, &payload, &mut out);
+        assert_eq!(n, out.len());
+        let mut scratch = vec![0u8; 128];
+        match codec.server_receive(&out, &mut scratch) {
+            ServerRx::Accepted(a) => {
+                assert_eq!(a.header, header);
+                assert_eq!(a.payload, &payload[..]);
             }
+            other => panic!("{other:?}"),
         }
     }
 
     #[test]
     fn a_different_key_is_rejected() {
-        let a = Codec::new(HiAeCipher::new([1; KEY_LEN]).unwrap(), KeyMode::Keyed);
-        let b = Codec::new(HiAeCipher::new([2; KEY_LEN]).unwrap(), KeyMode::Keyed);
+        let a = Codec::new(HiAeCipher::new([1; KEY_LEN]).unwrap());
+        let b = Codec::new(HiAeCipher::new([2; KEY_LEN]).unwrap());
         let mut out = vec![0u8; 16 + 10 + 16];
         a.seal(&Header { random: 1, counter: 1 }, &[1u8; 10], &mut out);
         let mut scratch = vec![0u8; 64];

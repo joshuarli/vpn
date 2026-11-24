@@ -25,7 +25,8 @@ sudo ./target/release/twice -k vpn.key -d client <server-address>
 The positional arguments after `server` or `client` are, in order: server
 address, port (`auto`), TUN name (`auto`), local TUN IP (`auto`), remote TUN IP
 (`auto`), and for the client the gateway IP (`auto`). Options `-k`, `-m` and
-`-d` must come before the mode. `twice genkey [path]` writes a 256-bit key with
+`-d` must come before the mode. `-k` is required: every run encrypts and
+authenticates with the shared key, and there is no unkeyed mode. `twice genkey [path]` writes a 256-bit key with
 mode `0600`.
 
 Run `./target/release/twice` with no arguments to see the full usage text.

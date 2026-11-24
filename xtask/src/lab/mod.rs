@@ -9,7 +9,7 @@ const USAGE: &str = "usage: cargo xtask lab <command> [args]
 commands:
   release [--target <triple>]
                    build the static musl release binaries and report size and linkage
-  smoke [--key] [--discover-mtu] [--rust-target <triple>]
+  smoke [--discover-mtu] [--rust-target <triple>]
                    run a real Rust-to-Rust tunnel between two network namespaces joined by a
                    veth pair, pass ping and TCP traffic in both directions, check the TUN MTU,
                    stop both ends with SIGTERM, and require clean exit and complete rule teardown";

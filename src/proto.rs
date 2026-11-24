@@ -80,8 +80,7 @@ impl Sender {
 pub struct AuthError;
 
 /// The HiAE operations the protocol needs, in place and allocation free. `nonce` is the encoded
-/// header, associated data is always empty, and `mac` authenticates `data` as associated data of
-/// an empty message.
+/// header and associated data is always empty.
 pub trait Cipher {
     fn encrypt(&self, nonce: &[u8; HEADER_LEN], inout: &mut [u8], tag: &mut [u8; TAG_LEN]);
     /// On `Err` the contents of `inout` are unspecified and must not be used.
@@ -91,53 +90,24 @@ pub trait Cipher {
         inout: &mut [u8],
         tag: &[u8; TAG_LEN],
     ) -> Result<(), AuthError>;
-    fn mac(&self, nonce: &[u8; HEADER_LEN], data: &[u8]) -> [u8; TAG_LEN];
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum KeyMode {
-    /// A 32-byte key file was loaded: payloads are encrypted and authenticated.
-    Keyed,
-    /// No key file: the cipher uses the all-zero key and payloads travel in cleartext with a MAC.
-    AuthOnly,
-}
-
-impl KeyMode {
-    pub const fn banner(self) -> &'static str {
-        match self {
-            KeyMode::Keyed => "Running in encrypted mode with authentication\n",
-            KeyMode::AuthOnly => "Running in authentication-only mode (no encryption)\n",
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum AuthFailure {
-    Decrypt,
-    TagMismatch,
-}
-
-impl fmt::Display for AuthFailure {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            AuthFailure::Decrypt => "Decryption or authentication failed\n",
-            AuthFailure::TagMismatch => "Authentication tag mismatch - packet rejected\n",
-        })
-    }
-}
+/// Startup line; every run is keyed, so payloads are always encrypted and authenticated.
+pub const ENCRYPTED_BANNER: &str = "Running in encrypted mode with authentication\n";
+pub const AUTH_FAILED_MESSAGE: &str = "Decryption or authentication failed\n";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Rejection {
     TooSmall,
-    Auth(AuthFailure),
+    Auth,
 }
 
 impl fmt::Display for Rejection {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Rejection::TooSmall => f.write_str(TOO_SMALL_MESSAGE),
-            Rejection::Auth(a) => a.fmt(f),
-        }
+        f.write_str(match self {
+            Rejection::TooSmall => TOO_SMALL_MESSAGE,
+            Rejection::Auth => AUTH_FAILED_MESSAGE,
+        })
     }
 }
 
@@ -198,19 +168,14 @@ pub enum ClientRx<'a> {
 
 pub struct Codec<C> {
     cipher: C,
-    mode: KeyMode,
 }
 
 impl<C: Cipher> Codec<C> {
-    pub fn new(cipher: C, mode: KeyMode) -> Self {
-        Codec { cipher, mode }
+    pub fn new(cipher: C) -> Self {
+        Codec { cipher }
     }
 
-    pub fn mode(&self) -> KeyMode {
-        self.mode
-    }
-
-    /// Writes `header | payload-or-ciphertext | tag` into `out` and returns the datagram length.
+    /// Writes `header | ciphertext | tag` into `out` and returns the datagram length.
     /// `out` must hold at least `HEADER_LEN + payload.len() + TAG_LEN` bytes.
     pub fn seal(&self, header: &Header, payload: &[u8], out: &mut [u8]) -> usize {
         out[HEADER_LEN..HEADER_LEN + payload.len()].copy_from_slice(payload);
@@ -227,40 +192,17 @@ impl<C: Cipher> Codec<C> {
         let nonce = header.to_bytes();
         out[..HEADER_LEN].copy_from_slice(&nonce);
         let mut tag = [0u8; TAG_LEN];
-        let body = &mut out[HEADER_LEN..HEADER_LEN + len];
-        match self.mode {
-            KeyMode::Keyed => self.cipher.encrypt(&nonce, body, &mut tag),
-            KeyMode::AuthOnly => tag = self.cipher.mac(&nonce, body),
-        }
+        self.cipher.encrypt(&nonce, &mut out[HEADER_LEN..HEADER_LEN + len], &mut tag);
         out[HEADER_LEN + len..HEADER_LEN + len + TAG_LEN].copy_from_slice(&tag);
         HEADER_LEN + len + TAG_LEN
     }
 
-    /// Verifies the frame and returns the plaintext payload. Keyed mode decrypts into `scratch`
-    /// (at least `frame.body.len()` bytes); authentication-only mode returns the body unchanged.
-    pub fn open<'a>(
-        &self,
-        frame: &Frame<'a>,
-        scratch: &'a mut [u8],
-    ) -> Result<&'a [u8], AuthFailure> {
-        match self.mode {
-            KeyMode::Keyed => {
-                let buf = &mut scratch[..frame.body.len()];
-                buf.copy_from_slice(frame.body);
-                self.cipher
-                    .decrypt(&frame.nonce, buf, &frame.tag)
-                    .map_err(|_| AuthFailure::Decrypt)?;
-                Ok(buf)
-            }
-            KeyMode::AuthOnly => {
-                let expected = self.cipher.mac(&frame.nonce, frame.body);
-                if constant_time_eq(&expected, &frame.tag) {
-                    Ok(frame.body)
-                } else {
-                    Err(AuthFailure::TagMismatch)
-                }
-            }
-        }
+    /// Verifies the frame and decrypts it into `scratch` (at least `frame.body.len()` bytes).
+    pub fn open<'a>(&self, frame: &Frame<'a>, scratch: &'a mut [u8]) -> Result<&'a [u8], AuthError> {
+        let buf = &mut scratch[..frame.body.len()];
+        buf.copy_from_slice(frame.body);
+        self.cipher.decrypt(&frame.nonce, buf, &frame.tag)?;
+        Ok(buf)
     }
 
     pub fn server_receive<'a>(&self, datagram: &'a [u8], scratch: &'a mut [u8]) -> ServerRx<'a> {
@@ -276,7 +218,7 @@ impl<C: Cipher> Codec<C> {
         };
         match self.open(&frame, scratch) {
             Ok(payload) => ServerRx::Accepted(Accepted { header: frame.header, payload }),
-            Err(f) => ServerRx::Rejected(Rejection::Auth(f)),
+            Err(AuthError) => ServerRx::Rejected(Rejection::Auth),
         }
     }
 
@@ -289,7 +231,7 @@ impl<C: Cipher> Codec<C> {
         };
         match self.open(&frame, scratch) {
             Ok(payload) => ClientRx::Accepted(Accepted { header: frame.header, payload }),
-            Err(f) => ClientRx::Reconnect(Rejection::Auth(f)),
+            Err(AuthError) => ClientRx::Reconnect(Rejection::Auth),
         }
     }
 
@@ -314,10 +256,6 @@ impl<C: Cipher> Codec<C> {
     }
 }
 
-fn constant_time_eq(a: &[u8; TAG_LEN], b: &[u8; TAG_LEN]) -> bool {
-    a.iter().zip(b).fold(0u8, |acc, (x, y)| acc | (x ^ y)) == 0
-}
-
 #[cfg(test)]
 pub(crate) mod testing {
     use super::*;
@@ -332,10 +270,10 @@ pub(crate) mod testing {
             self.key[i % KEY_LEN] ^ nonce[i % HEADER_LEN] ^ (i as u8).wrapping_mul(31)
         }
 
-        fn tag_of(&self, nonce: &[u8; HEADER_LEN], data: &[u8], tagged_with_ct: bool) -> [u8; TAG_LEN] {
+        fn tag_of(&self, nonce: &[u8; HEADER_LEN], data: &[u8]) -> [u8; TAG_LEN] {
             let mut t = [0u8; TAG_LEN];
             for (i, b) in t.iter_mut().enumerate() {
-                *b = self.key[(i * 3) % KEY_LEN] ^ nonce[i] ^ (tagged_with_ct as u8);
+                *b = self.key[(i * 3) % KEY_LEN] ^ nonce[i];
             }
             for (i, d) in data.iter().enumerate() {
                 t[i % TAG_LEN] = t[i % TAG_LEN].rotate_left(1) ^ d ^ (i as u8);
@@ -350,7 +288,7 @@ pub(crate) mod testing {
             for (i, b) in inout.iter_mut().enumerate() {
                 *b ^= self.stream(nonce, i);
             }
-            *tag = self.tag_of(nonce, inout, true);
+            *tag = self.tag_of(nonce, inout);
         }
 
         fn decrypt(
@@ -359,7 +297,7 @@ pub(crate) mod testing {
             inout: &mut [u8],
             tag: &[u8; TAG_LEN],
         ) -> Result<(), AuthError> {
-            if self.tag_of(nonce, inout, true) != *tag {
+            if self.tag_of(nonce, inout) != *tag {
                 inout.fill(0);
                 return Err(AuthError);
             }
@@ -368,18 +306,10 @@ pub(crate) mod testing {
             }
             Ok(())
         }
-
-        fn mac(&self, nonce: &[u8; HEADER_LEN], data: &[u8]) -> [u8; TAG_LEN] {
-            self.tag_of(nonce, data, false)
-        }
     }
 
-    pub fn codec(mode: KeyMode) -> Codec<FakeCipher> {
-        let key = match mode {
-            KeyMode::Keyed => [7u8; KEY_LEN],
-            KeyMode::AuthOnly => [0u8; KEY_LEN],
-        };
-        Codec::new(FakeCipher { key }, mode)
+    pub fn codec() -> Codec<FakeCipher> {
+        Codec::new(FakeCipher { key: [7u8; KEY_LEN] })
     }
 }
 
@@ -433,7 +363,7 @@ mod tests {
 
     #[test]
     fn keyed_datagram_layout_is_header_ciphertext_tag() {
-        let c = codec(KeyMode::Keyed);
+        let c = codec();
         let d = sealed(&c, H, b"hello world");
         assert_eq!(&d[..16], &H.to_bytes());
         assert_eq!(d.len(), 16 + 11 + 16);
@@ -441,73 +371,49 @@ mod tests {
     }
 
     #[test]
-    fn auth_only_datagram_carries_cleartext_payload() {
-        let c = codec(KeyMode::AuthOnly);
-        let d = sealed(&c, H, b"hello world");
-        assert_eq!(&d[16..27], b"hello world");
-        let nonce = H.to_bytes();
-        assert_eq!(&d[27..], &c.cipher.mac(&nonce, b"hello world"));
-    }
-
-    #[test]
-    fn seal_then_open_round_trips_in_both_modes() {
-        for mode in [KeyMode::Keyed, KeyMode::AuthOnly] {
-            let c = codec(mode);
-            let payload: Vec<u8> = (0..1500u32).map(|i| (i * 7) as u8).collect();
-            let d = sealed(&c, H, &payload);
-            let mut scratch = vec![0u8; MAX_PACKET_LEN];
-            let frame = Frame::parse(&d).unwrap();
-            assert_eq!(frame.header, H);
-            assert_eq!(c.open(&frame, &mut scratch).unwrap(), &payload[..]);
-        }
+    fn seal_then_open_round_trips() {
+        let c = codec();
+        let payload: Vec<u8> = (0..1500u32).map(|i| (i * 7) as u8).collect();
+        let d = sealed(&c, H, &payload);
+        let mut scratch = vec![0u8; MAX_PACKET_LEN];
+        let frame = Frame::parse(&d).unwrap();
+        assert_eq!(frame.header, H);
+        assert_eq!(c.open(&frame, &mut scratch).unwrap(), &payload[..]);
     }
 
     #[test]
     fn empty_payload_is_a_valid_32_byte_datagram() {
-        for mode in [KeyMode::Keyed, KeyMode::AuthOnly] {
-            let c = codec(mode);
-            let d = sealed(&c, H, b"");
-            assert_eq!(d.len(), 32);
-            let mut scratch = [0u8; 8];
-            match c.server_receive(&d, &mut scratch) {
-                ServerRx::Accepted(a) => assert!(a.payload.is_empty() && a.header == H),
-                other => panic!("{other:?}"),
-            }
+        let c = codec();
+        let d = sealed(&c, H, b"");
+        assert_eq!(d.len(), 32);
+        let mut scratch = [0u8; 8];
+        match c.server_receive(&d, &mut scratch) {
+            ServerRx::Accepted(a) => assert!(a.payload.is_empty() && a.header == H),
+            other => panic!("{other:?}"),
         }
     }
 
     #[test]
     fn tampering_any_part_fails_authentication() {
-        for mode in [KeyMode::Keyed, KeyMode::AuthOnly] {
-            let c = codec(mode);
-            let d = sealed(&c, H, b"payload bytes");
-            let mut scratch = vec![0u8; 64];
-            for i in [0, 9, 16, 20, d.len() - 1] {
-                let mut bad = d.clone();
-                bad[i] ^= 1;
-                let r = c.server_receive(&bad, &mut scratch);
-                assert!(matches!(r, ServerRx::Rejected(Rejection::Auth(_))), "byte {i}: {r:?}");
-            }
+        let c = codec();
+        let d = sealed(&c, H, b"payload bytes");
+        let mut scratch = vec![0u8; 64];
+        for i in [0, 9, 16, 20, d.len() - 1] {
+            let mut bad = d.clone();
+            bad[i] ^= 1;
+            let r = c.server_receive(&bad, &mut scratch);
+            assert!(matches!(r, ServerRx::Rejected(Rejection::Auth)), "byte {i}: {r:?}");
         }
     }
 
     #[test]
-    fn rejection_text_depends_on_key_mode() {
+    fn rejection_texts_are_exact() {
         let mut scratch = vec![0u8; 64];
-        let k = codec(KeyMode::Keyed);
+        let k = codec();
         let mut d = sealed(&k, H, b"x");
         d[16] ^= 1;
         match k.server_receive(&d, &mut scratch) {
             ServerRx::Rejected(r) => assert_eq!(r.to_string(), "Decryption or authentication failed\n"),
-            other => panic!("{other:?}"),
-        }
-        let a = codec(KeyMode::AuthOnly);
-        let mut d = sealed(&a, H, b"x");
-        d[16] ^= 1;
-        match a.server_receive(&d, &mut scratch) {
-            ServerRx::Rejected(r) => {
-                assert_eq!(r.to_string(), "Authentication tag mismatch - packet rejected\n")
-            }
             other => panic!("{other:?}"),
         }
         assert_eq!(
@@ -518,20 +424,20 @@ mod tests {
 
     #[test]
     fn wrong_key_is_rejected() {
-        let a = codec(KeyMode::Keyed);
-        let mut b = codec(KeyMode::Keyed);
+        let a = codec();
+        let mut b = codec();
         b.cipher.key[0] ^= 1;
         let d = sealed(&a, H, b"secret");
         let mut scratch = vec![0u8; 64];
         assert!(matches!(
             b.client_receive(&d, &mut scratch),
-            ClientRx::Reconnect(Rejection::Auth(AuthFailure::Decrypt))
+            ClientRx::Reconnect(Rejection::Auth)
         ));
     }
 
     #[test]
     fn server_ignores_datagrams_under_16_bytes_even_with_probe_prefix() {
-        let c = codec(KeyMode::Keyed);
+        let c = codec();
         let mut scratch = [0u8; 8];
         assert_eq!(c.server_receive(&[], &mut scratch), ServerRx::Ignored);
         assert_eq!(c.server_receive(&[0xFF; 15], &mut scratch), ServerRx::Ignored);
@@ -539,7 +445,7 @@ mod tests {
 
     #[test]
     fn server_echoes_probe_magic_without_authentication() {
-        let c = codec(KeyMode::Keyed);
+        let c = codec();
         let mut scratch = [0u8; 8];
         assert_eq!(c.server_receive(&[0xFF; 16], &mut scratch), ServerRx::EchoProbe);
         let mut junk = vec![0xFFu8; 16];
@@ -549,7 +455,7 @@ mod tests {
 
     #[test]
     fn server_rejects_16_to_31_bytes_as_too_small_without_reconnect_semantics() {
-        let c = codec(KeyMode::Keyed);
+        let c = codec();
         let mut scratch = [0u8; 8];
         for len in 16..32 {
             assert_eq!(
@@ -562,7 +468,7 @@ mod tests {
 
     #[test]
     fn client_ignores_under_16_and_reconnects_on_16_to_31_bytes() {
-        let c = codec(KeyMode::AuthOnly);
+        let c = codec();
         let mut scratch = [0u8; 8];
         assert_eq!(c.client_receive(&[1u8; 15], &mut scratch), ClientRx::Ignored);
         for len in 16..32 {
@@ -576,19 +482,19 @@ mod tests {
 
     #[test]
     fn client_reconnects_on_failed_authentication() {
-        let c = codec(KeyMode::AuthOnly);
+        let c = codec();
         let mut d = sealed(&c, H, b"abc");
         *d.last_mut().unwrap() ^= 0xFF;
         let mut scratch = [0u8; 8];
         assert_eq!(
             c.client_receive(&d, &mut scratch),
-            ClientRx::Reconnect(Rejection::Auth(AuthFailure::TagMismatch))
+            ClientRx::Reconnect(Rejection::Auth)
         );
     }
 
     #[test]
     fn client_passes_authenticated_probe_reply_to_the_stream() {
-        let c = codec(KeyMode::Keyed);
+        let c = codec();
         let mut d = vec![0u8; 16 + 40 + 16];
         c.seal_probe(40, &mut d);
         let mut scratch = [0u8; 64];
@@ -603,7 +509,7 @@ mod tests {
 
     #[test]
     fn server_accepts_authenticated_data_and_exposes_header_and_payload() {
-        let c = codec(KeyMode::Keyed);
+        let c = codec();
         let d = sealed(&c, H, b"ip packet");
         let mut scratch = [0u8; 64];
         match c.server_receive(&d, &mut scratch) {
@@ -616,37 +522,36 @@ mod tests {
     }
 
     #[test]
-    fn probe_seal_uses_magic_header_and_aa_fill() {
-        let c = codec(KeyMode::AuthOnly);
+    fn probe_seal_uses_magic_header_and_encrypts_aa_fill() {
+        let c = codec();
         let mut d = vec![0u8; 16 + 100 + 16];
         assert_eq!(c.seal_probe(100, &mut d), 132);
         assert_eq!(&d[..16], &[0xFF; 16]);
-        assert_eq!(&d[16..116], &[0xAA; 100][..]);
-        assert_eq!(&d[116..], &c.cipher.mac(&[0xFF; 16], &[0xAA; 100]));
+        let mut s = vec![0u8; 128];
+        let frame = Frame::parse(&d).unwrap();
+        assert_eq!(c.open(&frame, &mut s).unwrap(), &[0xAA; 100][..]);
     }
 
     #[test]
     fn probe_reply_requires_magic_valid_tag_and_exact_size() {
-        for mode in [KeyMode::Keyed, KeyMode::AuthOnly] {
-            let c = codec(mode);
-            let mut d = vec![0u8; 16 + 100 + 16];
-            c.seal_probe(100, &mut d);
-            let mut s = vec![0u8; 256];
-            assert!(c.is_probe_reply(&d, 100, &mut s));
-            assert!(!c.is_probe_reply(&d, 99, &mut s));
-            assert!(!c.is_probe_reply(&d, 101, &mut s));
-            let mut bad = d.clone();
-            bad[40] ^= 1;
-            assert!(!c.is_probe_reply(&bad, 100, &mut s));
-            assert!(!c.is_probe_reply(&d[..31], 0, &mut s));
-            let data = sealed(&c, H, &[0xAA; 100]);
-            assert!(!c.is_probe_reply(&data, 100, &mut s));
-        }
+        let c = codec();
+        let mut d = vec![0u8; 16 + 100 + 16];
+        c.seal_probe(100, &mut d);
+        let mut s = vec![0u8; 256];
+        assert!(c.is_probe_reply(&d, 100, &mut s));
+        assert!(!c.is_probe_reply(&d, 99, &mut s));
+        assert!(!c.is_probe_reply(&d, 101, &mut s));
+        let mut bad = d.clone();
+        bad[40] ^= 1;
+        assert!(!c.is_probe_reply(&bad, 100, &mut s));
+        assert!(!c.is_probe_reply(&d[..31], 0, &mut s));
+        let data = sealed(&c, H, &[0xAA; 100]);
+        assert!(!c.is_probe_reply(&data, 100, &mut s));
     }
 
     #[test]
     fn max_size_payload_round_trips() {
-        let c = codec(KeyMode::Keyed);
+        let c = codec();
         let payload = vec![0x5Au8; MAX_PACKET_LEN];
         let d = sealed(&c, H, &payload);
         assert_eq!(d.len(), MAX_DATAGRAM_LEN);
@@ -658,11 +563,7 @@ mod tests {
     }
 
     #[test]
-    fn key_mode_banners_match_startup_text() {
-        assert_eq!(KeyMode::Keyed.banner(), "Running in encrypted mode with authentication\n");
-        assert_eq!(
-            KeyMode::AuthOnly.banner(),
-            "Running in authentication-only mode (no encryption)\n"
-        );
+    fn startup_banner_announces_encryption() {
+        assert_eq!(ENCRYPTED_BANNER, "Running in encrypted mode with authentication\n");
     }
 }

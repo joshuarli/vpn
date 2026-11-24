@@ -14,7 +14,7 @@ pub const EXIT_USAGE: i32 = 254;
 /// What `return -1` from `main` becomes as a process status.
 pub const EXIT_SETUP_FAILED: i32 = 255;
 
-/// Bytes the C program writes to stdout for its usage text, including the newline `puts` adds.
+/// Usage text written to stdout, including a trailing blank line.
 pub const USAGE: &str = concat!(
     "twice ",
     "0.1.0",
@@ -30,17 +30,15 @@ pub const USAGE: &str = concat!(
     "port>|\"auto\"\n\t<tun interface>|\"auto\"\n\t<local tun ",
     "ip>|\"auto\"\n\t<remote tun ip>|\"auto\"\n\t<gateway ip>|\"auto\"\n\n",
     "Options:\n",
-    "\t-k, --key <file>\tPath to 256-bit key file for encryption\n",
+    "\t-k, --key <file>\tPath to 256-bit key file (required)\n",
     "\t-m, --mtu <mtu>\t\tSet TUN interface MTU (default: 1420)\n",
     "\t-d, --discover-mtu\tAutomatically discover optimal MTU (client only)\n\n",
     "Example:\n\n[server]\n",
-    "\tsudo ./twice server auto\t# listen on UDP port 41194\n",
-    "\tsudo ./twice -k vpn.key server auto\t# with encryption\n",
-    "\tsudo ./twice -m 1380 server auto\t# with custom MTU\n\n[client]\n",
-    "\tsudo ./twice client 34.216.127.34\n",
-    "\tsudo ./twice -k vpn.key client 34.216.127.34\t# with encryption\n",
-    "\tsudo ./twice -d client 34.216.127.34\t# with MTU discovery\n",
-    "\tsudo ./twice --mtu 1380 client 34.216.127.34\n\n",
+    "\tsudo ./twice -k vpn.key server auto\t# listen on UDP port 41194\n",
+    "\tsudo ./twice -k vpn.key -m 1380 server auto\t# with custom MTU\n\n[client]\n",
+    "\tsudo ./twice -k vpn.key client 34.216.127.34\n",
+    "\tsudo ./twice -k vpn.key -d client 34.216.127.34\t# with MTU discovery\n",
+    "\tsudo ./twice -k vpn.key --mtu 1380 client 34.216.127.34\n\n",
     "Generate encryption key:\n",
     "\t./twice genkey\t\t# creates vpn.key\n",
     "\t./twice genkey mykey.key\t# creates mykey.key\n",
@@ -55,7 +53,7 @@ pub enum Command {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Run {
-    pub key_file: Option<OsString>,
+    pub key_file: OsString,
     pub mtu: Mtu,
     pub mode: Mode,
     pub port: OsString,
@@ -120,6 +118,8 @@ pub enum CliError {
     /// `Unknown option: ...` on stderr, then usage text on stdout, exit 254.
     UnknownOption(OsString),
     KeyOptionNeedsPath,
+    /// A run mode was given without `-k`; there is no unkeyed mode.
+    KeyRequired,
     MtuOptionNeedsValue,
     InvalidMtu(i32),
 }
@@ -144,6 +144,9 @@ impl CliError {
             CliError::Usage => Vec::new(),
             CliError::UnknownOption(o) => [b"Unknown option: ", o.as_bytes(), b"\n"].concat(),
             CliError::KeyOptionNeedsPath => b"Key option requires a file path\n".to_vec(),
+            CliError::KeyRequired => {
+                b"A key file is required: pass -k <file> (create one with 'twice genkey')\n".to_vec()
+            }
             CliError::MtuOptionNeedsValue => b"MTU option requires a value\n".to_vec(),
             CliError::InvalidMtu(v) => {
                 format!("Invalid MTU value: {v} (must be between {MIN_ARG_MTU} and {MAX_ARG_MTU})\n")
@@ -266,6 +269,9 @@ pub fn parse<S: AsRef<OsStr>>(argv: &[S]) -> Result<Command, CliError> {
     let local_tun_ip = or_default(positional(4), own_default);
     let remote_tun_ip = or_default(positional(5), peer_default);
     let gateway = positional(6);
+    let Some(key_file) = key_file else {
+        return Err(CliError::KeyRequired);
+    };
 
     Ok(Command::Run(Box::new(Run {
         key_file,
@@ -326,8 +332,11 @@ mod tests {
         parse(&v)
     }
 
+    /// Parses `args` after a leading `-k t.key`, so a later `-k` in `args` overrides it.
     fn run(args: &[&str]) -> Run {
-        match p(args).unwrap() {
+        let mut keyed = vec!["-k", "t.key"];
+        keyed.extend_from_slice(args);
+        match p(&keyed).unwrap() {
             Command::Run(r) => *r,
             other => panic!("{other:?}"),
         }
@@ -361,22 +370,20 @@ mod tests {
             "\t<gateway ip>|\"auto\"",
             "",
             "Options:",
-            "\t-k, --key <file>\tPath to 256-bit key file for encryption",
+            "\t-k, --key <file>\tPath to 256-bit key file (required)",
             "\t-m, --mtu <mtu>\t\tSet TUN interface MTU (default: 1420)",
             "\t-d, --discover-mtu\tAutomatically discover optimal MTU (client only)",
             "",
             "Example:",
             "",
             "[server]",
-            "\tsudo ./twice server auto\t# listen on UDP port 41194",
-            "\tsudo ./twice -k vpn.key server auto\t# with encryption",
-            "\tsudo ./twice -m 1380 server auto\t# with custom MTU",
+            "\tsudo ./twice -k vpn.key server auto\t# listen on UDP port 41194",
+            "\tsudo ./twice -k vpn.key -m 1380 server auto\t# with custom MTU",
             "",
             "[client]",
-            "\tsudo ./twice client 34.216.127.34",
-            "\tsudo ./twice -k vpn.key client 34.216.127.34\t# with encryption",
-            "\tsudo ./twice -d client 34.216.127.34\t# with MTU discovery",
-            "\tsudo ./twice --mtu 1380 client 34.216.127.34",
+            "\tsudo ./twice -k vpn.key client 34.216.127.34",
+            "\tsudo ./twice -k vpn.key -d client 34.216.127.34\t# with MTU discovery",
+            "\tsudo ./twice -k vpn.key --mtu 1380 client 34.216.127.34",
             "",
             "Generate encryption key:",
             "\t./twice genkey\t\t# creates vpn.key",
@@ -386,7 +393,6 @@ mod tests {
         ]
         .join("\n");
         assert_eq!(USAGE, expected);
-        assert_eq!(USAGE.len(), 1108);
         assert!(USAGE.contains(&format!("twice {} usage:", crate::VERSION_STRING)));
     }
 
@@ -415,7 +421,7 @@ mod tests {
         assert_eq!(c.remote_tun_ip, os("192.168.192.254"));
         assert_eq!(c.gateway, None);
         assert_eq!(c.mtu, Mtu::Fixed(1420));
-        assert_eq!(c.key_file, None);
+        assert_eq!(c.key_file, os("t.key"));
 
         let s = run(&["server"]);
         assert_eq!(s.mode, Mode::Server { bind: None });
@@ -468,13 +474,11 @@ mod tests {
     #[test]
     fn options_must_precede_the_mode() {
         let r = run(&["-k", "vpn.key", "-m", "1380", "client", "h"]);
-        assert_eq!(r.key_file, Some(os("vpn.key")));
+        assert_eq!(r.key_file, os("vpn.key"));
         assert_eq!(r.mtu, Mtu::Fixed(1380));
         let r = run(&["--key", "k", "--mtu", "1380", "--discover-mtu", "server"]);
         assert_eq!(r.mtu, Mtu::Discover { initial: 1380 });
-        assert_eq!(r.key_file, Some(os("k")));
-        let r = run(&["client", "h", "auto", "auto", "auto", "auto", "auto"]);
-        assert_eq!(r.key_file, None);
+        assert_eq!(r.key_file, os("k"));
         assert_eq!(run(&["client", "h", "-k", "x"]).port, os("-k"));
     }
 
@@ -551,7 +555,7 @@ mod tests {
     #[test]
     fn option_argument_is_consumed_even_if_it_looks_like_an_option() {
         let r = run(&["-k", "-d", "client", "h"]);
-        assert_eq!(r.key_file, Some(os("-d")));
+        assert_eq!(r.key_file, os("-d"));
         assert!(!r.mtu.discovers());
         assert_eq!(p(&["-k", "x"]).unwrap_err(), CliError::Usage);
     }
@@ -581,6 +585,21 @@ mod tests {
     }
 
     #[test]
+    fn a_run_without_a_key_is_rejected() {
+        for args in [&["server"][..], &["client", "h"], &["-d", "-m", "1380", "client", "h"]] {
+            let e = p(args).unwrap_err();
+            assert_eq!(e, CliError::KeyRequired, "{args:?}");
+            assert_eq!((e.exit_code(), e.stdout()), (1, ""));
+            assert_eq!(
+                e.stderr(),
+                b"A key file is required: pass -k <file> (create one with 'twice genkey')\n"
+            );
+        }
+        assert_eq!(p(&["client", "h", "-k", "x"]).unwrap_err(), CliError::KeyRequired);
+        assert_eq!(p(&["client"]).unwrap_err(), CliError::Usage);
+    }
+
+    #[test]
     fn invalid_mtu_is_reported_before_missing_mode() {
         assert_eq!(p(&["-m", "5"]).unwrap_err(), CliError::InvalidMtu(5));
     }
@@ -589,7 +608,7 @@ mod tests {
     fn non_utf8_arguments_are_preserved() {
         use std::os::unix::ffi::OsStringExt;
         let weird = OsString::from_vec(vec![b'h', 0xff, b'x']);
-        let argv = [os("twice"), os("client"), weird.clone()];
+        let argv = [os("twice"), os("-k"), os("t.key"), os("client"), weird.clone()];
         match parse(&argv).unwrap() {
             Command::Run(r) => assert_eq!(r.mode, Mode::Client { server: weird }),
             other => panic!("{other:?}"),

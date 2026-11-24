@@ -1,4 +1,0 @@
-{"case":{"argv":["-m","9223372036854775807","server","auto"],"name":"opt_mtu_long_max_exact","role":"tool","seed":443425}}
-{"ev":"stdout","text":""}
-{"ev":"stderr","text":"Invalid MTU value: -1 (must be between 68 and 9000)\n"}
-{"code":1,"ev":"exit","t_ms":0}

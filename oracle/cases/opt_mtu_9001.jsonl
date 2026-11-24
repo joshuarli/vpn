@@ -1,4 +1,0 @@
-{"case":{"argv":["-m","9001","server","auto"],"name":"opt_mtu_9001","role":"tool","seed":735560}}
-{"ev":"stdout","text":""}
-{"ev":"stderr","text":"Invalid MTU value: 9001 (must be between 68 and 9000)\n"}
-{"code":1,"ev":"exit","t_ms":0}

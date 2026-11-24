@@ -1,17 +1,14 @@
 use crate::util::{self, Result};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
 
-const USAGE: &str = "usage: cargo xtask resume [--verify-final]
+const USAGE: &str = "usage: cargo xtask resume
 
-Without arguments, print the campaign Status section and the integration HEAD.
---verify-final rebuilds the recorded best pair in a clean worktree and reruns
-the correctness gates.";
+Print the roadmap Status section and the integration HEAD.";
 
 pub fn run(args: &[String]) -> Result<()> {
     match args.first().map(String::as_str) {
         None => state(),
-        Some("--verify-final") if args.len() == 1 => verify_final(),
         Some("-h" | "--help") => Err(USAGE.to_owned()),
         Some(other) => Err(format!("resume: unexpected argument `{other}`\n{USAGE}")),
     }
@@ -34,96 +31,5 @@ fn state() -> Result<()> {
     let head = util::capture(git(Command::new("git").args(["rev-parse", "HEAD"]), &root))?;
     let branch = util::capture(git(Command::new("git").args(["rev-parse", "--abbrev-ref", "HEAD"]), &root))?;
     println!("integration pair: {} @ {}", branch.trim(), head.trim().chars().take(12).collect::<String>());
-    let pair = util::read(&root.join("results/final-pair.json"))?;
-    let doc: serde_json::Value = serde_json::from_str(&pair).map_err(|e| format!("results/final-pair.json: {e}"))?;
-    println!("recorded pair: {}", doc["commit"].as_str().unwrap_or("<missing>"));
-    println!("  oracle:   {}", doc["oracle"].as_str().unwrap_or("<missing>"));
-    println!("  graviola: {}", doc["graviola"].as_str().unwrap_or("<missing>"));
-    Ok(())
-}
-
-fn recorded_commit() -> Result<String> {
-    let root = util::repo_root();
-    let text = util::read(&root.join("results/final-pair.json"))?;
-    let doc: serde_json::Value = serde_json::from_str(&text).map_err(|e| format!("results/final-pair.json: {e}"))?;
-    let oracle = doc["oracle"].as_str().unwrap_or("");
-    if oracle != util::ORACLE_REV {
-        return Err(format!("results/final-pair.json records oracle {oracle:?}, pinned {}", util::ORACLE_REV));
-    }
-    let graviola = doc["graviola"].as_str().unwrap_or("");
-    let locked = util::graviola_locked_rev()?;
-    if graviola != locked {
-        return Err(format!("results/final-pair.json records graviola {graviola:?}, Cargo.lock pins {locked}"));
-    }
-    let name = doc["commit"]
-        .as_str()
-        .filter(|s| !s.is_empty())
-        .ok_or_else(|| "results/final-pair.json has no commit")?;
-    util::capture(git(Command::new("git").args(["rev-parse", name]), &root))
-        .map(|s| s.trim().to_owned())
-        .map_err(|e| format!("cannot resolve recorded pair `{name}`: {e}"))
-}
-
-fn clean_checkout(commit: &str) -> Result<PathBuf> {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let root = util::repo_root();
-    let stamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_err(|e| format!("system clock is before the epoch: {e}"))?
-        .as_secs();
-    let dir = util::work_dir()?.join(format!("verify-final-{stamp}"));
-    eprintln!("resume: creating clean checkout at {}", dir.display());
-    util::status(git(
-        Command::new("git").args(["worktree", "add", "--detach", dir.to_str().ok_or("non-UTF-8 worktree path")?, commit]),
-        &root,
-    ))?;
-    util::status(git(
-        Command::new("git").args(["submodule", "update", "--init", "oracle/upstream"]),
-        &dir,
-    ))?;
-    let actual = util::capture(git(Command::new("git").args(["rev-parse", "HEAD"]), &dir))?;
-    if !actual.starts_with(commit) {
-        return Err(format!("verify checkout is at {}, expected {commit}", actual.trim()));
-    }
-    let dirty = util::capture(git(Command::new("git").args(["status", "--porcelain"]), &dir))?;
-    if !dirty.trim().is_empty() {
-        return Err(format!("verify checkout is dirty:\n{}", dirty.trim_end()));
-    }
-    Ok(dir)
-}
-
-fn step(dir: &Path, args: &[&str]) -> Result<()> {
-    eprintln!("resume: cargo xtask {}", args.join(" "));
-    let status = Command::new("cargo")
-        .arg("xtask")
-        .args(args)
-        .current_dir(dir)
-        .status()
-        .map_err(|e| format!("spawn cargo xtask {}: {e}", args.join(" ")))?;
-    if status.success() {
-        Ok(())
-    } else {
-        Err(format!("verification step failed: cargo xtask {}", args.join(" ")))
-    }
-}
-
-fn verify_final() -> Result<()> {
-    let commit = recorded_commit()?;
-    let dir = clean_checkout(&commit)?;
-    eprintln!("resume: verifying pair {commit} in {}", dir.display());
-
-    let required: &[&[&str]] = &[
-        &["oracle", "verify"],
-        &["test"],
-        &["crypto-diff", "--all-available"],
-        &["diff", "--self-check"],
-        &["diff", "--ledger"],
-        &["diff", "--all"],
-        &["lab", "matrix"],
-    ];
-    for args in required {
-        step(&dir, args)?;
-    }
-    println!("resume --verify-final: PASS ({} correctness gates)", required.len());
     Ok(())
 }

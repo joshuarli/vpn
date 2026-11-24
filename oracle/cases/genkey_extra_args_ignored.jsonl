@@ -1,6 +1,0 @@
-{"case":{"argv":["genkey","g.key","other.key","-d"],"name":"genkey_extra_args_ignored","normalize":["generated-key"],"role":"tool","seed":189514}}
-{"ev":"open","flags":0,"path":"/dev/urandom","t_ms":0}
-{"ev":"stdout","text":"Successfully generated 256-bit key file: g.key\n\nUsage:\n  Server: sudo ./twice -k g.key server auto\n  Client: sudo ./twice -k g.key client <server-ip>\n\nImportant: Copy this key file securely to both server and client\n"}
-{"ev":"stderr","text":""}
-{"ev":"file","hex":"a666895aff4a9d336c2bf96f6d183e5918222879be0686a48022f1b4b432bbe8","mode":"0600","path":"g.key"}
-{"code":0,"ev":"exit","t_ms":0}

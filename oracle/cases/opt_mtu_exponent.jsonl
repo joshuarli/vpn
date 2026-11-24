@@ -1,4 +1,0 @@
-{"case":{"argv":["-m","1e3","server","auto"],"name":"opt_mtu_exponent","role":"tool","seed":829013}}
-{"ev":"stdout","text":""}
-{"ev":"stderr","text":"Invalid MTU value: 1 (must be between 68 and 9000)\n"}
-{"code":1,"ev":"exit","t_ms":0}

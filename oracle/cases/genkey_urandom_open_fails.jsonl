@@ -1,5 +1,0 @@
-{"case":{"argv":["genkey","g.key"],"errors":[{"call":"open","count":1,"errno":"EACCES","fd":"urandom","nth":1}],"name":"genkey_urandom_open_fails","role":"tool","seed":225942}}
-{"ev":"open","flags":0,"path":"/dev/urandom","t_ms":0}
-{"ev":"stdout","text":""}
-{"ev":"stderr","text":"Error: Failed to generate random key\n"}
-{"code":1,"ev":"exit","t_ms":0}

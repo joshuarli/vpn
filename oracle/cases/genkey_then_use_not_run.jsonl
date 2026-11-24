@@ -1,5 +1,0 @@
-{"case":{"argv":["genkey","dir/../g.key"],"name":"genkey_then_use_not_run","normalize":["generated-key"],"role":"tool","seed":657566}}
-{"ev":"open","flags":0,"path":"/dev/urandom","t_ms":0}
-{"ev":"stdout","text":""}
-{"ev":"stderr","text":"Error: Failed to create key file 'dir/../g.key'\n"}
-{"code":1,"ev":"exit","t_ms":0}

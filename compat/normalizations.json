@@ -1,7 +1,0 @@
-[
-  {"id": "startup-random", "what": "8-byte random value chosen at startup and every value derived from it, including wire header bytes and tags"},
-  {"id": "generated-key", "what": "bytes written by genkey"},
-  {"id": "interface-name", "what": "kernel-assigned TUN interface name"},
-  {"id": "os-error-text", "what": "text after a perror or gai_strerror prefix"},
-  {"id": "pid", "what": "process IDs"}
-]

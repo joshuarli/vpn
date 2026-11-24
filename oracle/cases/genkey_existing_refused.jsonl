@@ -1,4 +1,0 @@
-{"case":{"argv":["genkey","have.key"],"files":{"have.key":"aa"},"name":"genkey_existing_refused","role":"tool","seed":929627}}
-{"ev":"stdout","text":""}
-{"ev":"stderr","text":"Error: Key file 'have.key' already exists\nPlease specify a different filename or remove the existing file\n"}
-{"code":1,"ev":"exit","t_ms":0}

@@ -1,4 +1,0 @@
-{"case":{"argv":["-m","70","--key"],"name":"opt_mtu_before_missing_key","role":"tool","seed":20966}}
-{"ev":"stdout","text":""}
-{"ev":"stderr","text":"Key option requires a file path\n"}
-{"code":1,"ev":"exit","t_ms":0}

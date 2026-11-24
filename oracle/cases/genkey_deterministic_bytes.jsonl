@@ -1,6 +1,0 @@
-{"case":{"argv":["genkey","d.key"],"name":"genkey_deterministic_bytes","role":"tool","seed":235913,"urandom_prefix":"40474e555c636a71787f868d949ba2a9b0b7bec5ccd3dae1e8eff6fd040b1219"}}
-{"ev":"open","flags":0,"path":"/dev/urandom","t_ms":0}
-{"ev":"stdout","text":"Successfully generated 256-bit key file: d.key\n\nUsage:\n  Server: sudo ./twice -k d.key server auto\n  Client: sudo ./twice -k d.key client <server-ip>\n\nImportant: Copy this key file securely to both server and client\n"}
-{"ev":"stderr","text":""}
-{"ev":"file","hex":"40474e555c636a71787f868d949ba2a9b0b7bec5ccd3dae1e8eff6fd040b1219","mode":"0600","path":"d.key"}
-{"code":0,"ev":"exit","t_ms":0}

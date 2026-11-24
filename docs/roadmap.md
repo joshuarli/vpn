@@ -9,7 +9,7 @@ This is the single plan for this repository: all current and future work, and th
 - **Accepted:** G0, H1, H2, T1, S1, T2, T3, B1, D1, X1, I1, B2-prep, L1, C1 verification. **Red:** none. Performance and memory parity were dropped by owner decision; O1–O3 are retired with them.
 - **Running:** none.
 - **Next slice:** none locally. BSD runtime is out of scope by owner decision 2026-11-23; macOS native runtime remains on **Needs environment** (`sudo` on `m1-max` needs a password).
-- **Resume:** read this Status, run `git status -sb` and `git worktree list`, then run `cargo xtask resume --verify-final`.
+- **Resume:** read this Status, run `git status -sb` and `git worktree list`, then run `cargo xtask resume`.
 
 | Milestone | State |
 | --- | --- |

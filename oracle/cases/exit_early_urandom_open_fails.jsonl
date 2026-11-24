@@ -1,7 +1,0 @@
-{"case":{"argv":["server","auto"],"errors":[{"call":"open","count":1,"errno":"EACCES","fd":"urandom","nth":1}],"name":"exit_early_urandom_open_fails","role":"tool","seed":357237}}
-{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":0,"via":"popen"}
-{"command":"ip route show default 2>/dev/null|awk '/default/{print $5}'","ev":"cmd","mode":"r","t_ms":0,"via":"popen"}
-{"ev":"open","flags":0,"path":"/dev/urandom","t_ms":0}
-{"ev":"stdout","text":"Running in authentication-only mode (no encryption)\n"}
-{"ev":"stderr","text":"Failed to read from /dev/urandom: Permission denied\n"}
-{"code":1,"ev":"exit","t_ms":0}

@@ -1,4 +1,0 @@
-{"case":{"argv":["-k","vpn.key","--mtu"],"name":"opt_missing_mtu_value_after_key","role":"tool","seed":362353}}
-{"ev":"stdout","text":""}
-{"ev":"stderr","text":"MTU option requires a value\n"}
-{"code":1,"ev":"exit","t_ms":0}

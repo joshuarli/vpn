@@ -1,8 +1,8 @@
-use super::common::{self, Impl};
+use super::common;
 use crate::container;
 use crate::util::Result;
 
-const USAGE: &str = "usage: cargo xtask lab smoke --client rust|c --server rust|c [--key] [--discover-mtu] [--rust-target <triple>]
+const USAGE: &str = "usage: cargo xtask lab smoke [--key] [--discover-mtu] [--rust-target <triple>]
 
 --discover-mtu starts the client with -d and checks that its TUN MTU follows the discovered value.
 --rust-target runs the release binary built for that triple (aarch64-unknown-linux-musl) instead of the debug build.";
@@ -154,16 +154,12 @@ echo "discovered MTU applied: $want"
 "##;
 
 pub fn run(args: &[String]) -> Result<()> {
-    let mut client = None;
-    let mut server = None;
     let mut key = false;
     let mut discover = false;
     let mut rust_target: Option<String> = None;
     let mut it = args.iter();
     while let Some(arg) = it.next() {
         match arg.as_str() {
-            "--client" => client = Some(Impl::parse(arg, it.next(), USAGE)?),
-            "--server" => server = Some(Impl::parse(arg, it.next(), USAGE)?),
             "--key" => key = true,
             "--discover-mtu" => discover = true,
             "--rust-target" => {
@@ -176,11 +172,7 @@ pub fn run(args: &[String]) -> Result<()> {
             other => return Err(format!("unexpected argument `{other}`\n\n{USAGE}")),
         }
     }
-    let client = client.ok_or_else(|| format!("--client is required\n\n{USAGE}"))?;
-    let server = server.ok_or_else(|| format!("--server is required\n\n{USAGE}"))?;
-
-    let uses_rust = client == Impl::Rust || server == Impl::Rust;
-    let bins = common::prepare(client == Impl::C || server == Impl::C, uses_rust, rust_target.as_deref())?;
+    let bin = common::prepare(rust_target.as_deref())?;
     let key_setup = if key {
         "head -c 32 /dev/urandom > $W/vpn.key; KEY=\"-k $W/vpn.key\""
     } else {
@@ -190,14 +182,14 @@ pub fn run(args: &[String]) -> Result<()> {
     let mtu_check = if discover { MTU_CHECK_DISCOVER } else { MTU_CHECK_FIXED };
     let post_check = if discover { POST_CHECK_DISCOVER } else { ":" };
     let script = SCRIPT
-        .replace("@CLIENT_BIN@", bins.path(client))
-        .replace("@SERVER_BIN@", bins.path(server))
+        .replace("@CLIENT_BIN@", &bin)
+        .replace("@SERVER_BIN@", &bin)
         .replace("@KEY_SETUP@", key_setup)
         .replace("@DISCOVER_SETUP@", discover_setup)
         .replace("@MTU_CHECK@", mtu_check)
         .replace("@POST_CHECK@", post_check)
-        .replace("@CLIENT_NAME@", client.name())
-        .replace("@SERVER_NAME@", server.name())
+        .replace("@CLIENT_NAME@", "rust")
+        .replace("@SERVER_NAME@", "rust")
         .replace("@KEY_NAME@", if key { "yes" } else { "no" });
     container::Run::new(&script).status()
 }

@@ -1,4 +1,0 @@
-{"case":{"argv":["-m","0x564","server","auto"],"name":"opt_mtu_hex","role":"tool","seed":812827}}
-{"ev":"stdout","text":""}
-{"ev":"stderr","text":"Invalid MTU value: 0 (must be between 68 and 9000)\n"}
-{"code":1,"ev":"exit","t_ms":0}

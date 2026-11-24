@@ -3,26 +3,11 @@ use std::process::{Command, Stdio};
 
 pub type Result<T> = std::result::Result<T, String>;
 
-pub const ORACLE_REV: &str = "391c461697c871e542c7beb44631e77e4c5646dd";
-pub const ORACLE_HIAE_SHA256: &str =
-    "05f745a783317f3e6dc3b0a85a71075eacd1a2a6f82711243e8f6c053c3d6f05";
-pub const ORACLE_DIR: &str = "oracle/upstream";
-pub const GRAVIOLA_SOURCE: &str = "git+https://github.com/laputa-systems/graviola?branch=twice-hiae";
-pub const GRAVIOLA_REMOTE: &str = "https://github.com/laputa-systems/graviola";
-pub const GRAVIOLA_BRANCH: &str = "twice-hiae";
-pub const FRANK_DENIS_NOTICE: &str = "Copyright (c) 2025-2026 Frank Denis";
-
 pub fn repo_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .expect("xtask lives one level below the repo root")
         .to_path_buf()
-}
-
-pub fn work_dir() -> Result<PathBuf> {
-    let dir = repo_root().join(".work/tmp");
-    std::fs::create_dir_all(&dir).map_err(|e| format!("create {}: {e}", dir.display()))?;
-    Ok(dir)
 }
 
 pub fn read(path: &Path) -> Result<String> {
@@ -70,14 +55,6 @@ pub fn toolchain_channel() -> Result<String> {
             Some(rest.trim().trim_matches('"').to_owned())
         })
         .ok_or_else(|| "rust-toolchain.toml has no channel".to_owned())
-}
-
-pub fn graviola_locked_rev() -> Result<String> {
-    let lock = read(&repo_root().join("Cargo.lock"))?;
-    let prefix = format!("source = \"{GRAVIOLA_SOURCE}#");
-    lock.lines()
-        .find_map(|l| l.strip_prefix(&prefix)?.strip_suffix('"').map(str::to_owned))
-        .ok_or_else(|| format!("Cargo.lock has no graviola package from {GRAVIOLA_SOURCE}"))
 }
 
 pub fn no_args(command: &str, args: &[String]) -> Result<()> {

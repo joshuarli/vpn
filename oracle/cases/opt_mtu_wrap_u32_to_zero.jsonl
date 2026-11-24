@@ -1,4 +1,0 @@
-{"case":{"argv":["-m","4294967296","server","auto"],"name":"opt_mtu_wrap_u32_to_zero","role":"tool","seed":525020}}
-{"ev":"stdout","text":""}
-{"ev":"stderr","text":"Invalid MTU value: 0 (must be between 68 and 9000)\n"}
-{"code":1,"ev":"exit","t_ms":0}

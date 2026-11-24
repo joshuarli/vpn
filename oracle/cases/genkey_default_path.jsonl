@@ -1,6 +1,0 @@
-{"case":{"argv":["genkey"],"name":"genkey_default_path","normalize":["generated-key"],"role":"tool","seed":611592}}
-{"ev":"open","flags":0,"path":"/dev/urandom","t_ms":0}
-{"ev":"stdout","text":"Successfully generated 256-bit key file: vpn.key\n\nUsage:\n  Server: sudo ./twice -k vpn.key server auto\n  Client: sudo ./twice -k vpn.key client <server-ip>\n\nImportant: Copy this key file securely to both server and client\n"}
-{"ev":"stderr","text":""}
-{"ev":"file","hex":"7d9cfd695df7bbf92f465493ac6b8214032a4f0a5eded1b60751e6d81bb5ec1c","mode":"0600","path":"vpn.key"}
-{"code":0,"ev":"exit","t_ms":0}

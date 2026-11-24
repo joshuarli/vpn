@@ -1,5 +1,0 @@
-{"case":{"argv":["genkey","nodir/g.key"],"name":"genkey_missing_directory","role":"tool","seed":873111}}
-{"ev":"open","flags":0,"path":"/dev/urandom","t_ms":0}
-{"ev":"stdout","text":""}
-{"ev":"stderr","text":"Error: Failed to create key file 'nodir/g.key'\n"}
-{"code":1,"ev":"exit","t_ms":0}

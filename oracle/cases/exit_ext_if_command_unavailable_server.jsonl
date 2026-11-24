@@ -1,5 +1,0 @@
-{"case":{"argv":["server","auto"],"errors":[{"call":"popen","count":1,"errno":"EMFILE","nth":2}],"name":"exit_ext_if_command_unavailable_server","role":"tool","seed":860208}}
-{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":0,"via":"popen"}
-{"ev":"stdout","text":""}
-{"ev":"stderr","text":"Unable to automatically determine the external interface\n"}
-{"code":1,"ev":"exit","t_ms":0}

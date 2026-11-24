@@ -1,6 +1,0 @@
-{"case":{"argv":["-k","absent.key","server","auto"],"name":"opt_missing_key_file","role":"tool","seed":421776}}
-{"command":"ip route show default 2>/dev/null|awk '/default/{print $3}'","ev":"cmd","mode":"r","t_ms":0,"via":"popen"}
-{"command":"ip route show default 2>/dev/null|awk '/default/{print $5}'","ev":"cmd","mode":"r","t_ms":0,"via":"popen"}
-{"ev":"stdout","text":""}
-{"ev":"stderr","text":"Failed to open key file: absent.key\n"}
-{"code":1,"ev":"exit","t_ms":0}

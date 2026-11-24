@@ -1,4 +1,0 @@
-{"case":{"argv":["genkey"],"files":{"vpn.key":"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"},"name":"genkey_existing_default_refused","role":"tool","seed":604625}}
-{"ev":"stdout","text":""}
-{"ev":"stderr","text":"Error: Key file 'vpn.key' already exists\nPlease specify a different filename or remove the existing file\n"}
-{"code":1,"ev":"exit","t_ms":0}

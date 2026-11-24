@@ -1,5 +1,4 @@
 use crate::util::{self, Result};
-use std::path::PathBuf;
 use std::process::Command;
 
 const DOCKERFILE: &str = "docker/lab.Dockerfile";
@@ -7,7 +6,6 @@ const CARGO_REGISTRY_VOLUME: &str = "twice-lab-cargo-registry";
 const CARGO_GIT_VOLUME: &str = "twice-lab-cargo-git";
 
 pub const CONTAINER_REPO: &str = "/src";
-pub const CONTAINER_GRAVIOLA: &str = "/graviola";
 pub const CONTAINER_TARGET: &str = "/target";
 
 pub fn image_tag() -> Result<String> {
@@ -51,23 +49,14 @@ fn target_volume(root: &std::path::Path) -> String {
     format!("twice-lab-target-{hash:016x}")
 }
 
-pub fn graviola_checkout() -> Option<PathBuf> {
-    std::env::var_os("GRAVIOLA_DIR").map(PathBuf::from).or_else(|| {
-        let home = std::env::var_os("HOME")?;
-        let dir = PathBuf::from(home).join("repos/graviola");
-        dir.join("graviola/Cargo.toml").is_file().then_some(dir)
-    })
-}
-
 pub struct Run<'a> {
     pub script: &'a str,
     pub env: Vec<(String, String)>,
-    pub graviola: Option<PathBuf>,
 }
 
 impl<'a> Run<'a> {
     pub fn new(script: &'a str) -> Self {
-        Run { script, env: Vec::new(), graviola: None }
+        Run { script, env: Vec::new() }
     }
 
     fn command(&self) -> Result<Command> {
@@ -87,9 +76,6 @@ impl<'a> Run<'a> {
             .arg("-v")
             .arg(format!("{}:{CONTAINER_TARGET}", target_volume(&root)))
             .args(["-e", &format!("CARGO_TARGET_DIR={CONTAINER_TARGET}")]);
-        if let Some(dir) = &self.graviola {
-            cmd.arg("-v").arg(format!("{}:{CONTAINER_GRAVIOLA}", dir.display()));
-        }
         for (k, v) in &self.env {
             cmd.arg("-e").arg(format!("{k}={v}"));
         }

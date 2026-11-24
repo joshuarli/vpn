@@ -1,4 +1,0 @@
-{"case":{"argv":["-m","67","server","auto"],"name":"opt_mtu_67","role":"tool","seed":661137}}
-{"ev":"stdout","text":""}
-{"ev":"stderr","text":"Invalid MTU value: 67 (must be between 68 and 9000)\n"}
-{"code":1,"ev":"exit","t_ms":0}

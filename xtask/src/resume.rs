@@ -30,6 +30,6 @@ fn state() -> Result<()> {
     println!("{status}\n");
     let head = util::capture(git(Command::new("git").args(["rev-parse", "HEAD"]), &root))?;
     let branch = util::capture(git(Command::new("git").args(["rev-parse", "--abbrev-ref", "HEAD"]), &root))?;
-    println!("integration pair: {} @ {}", branch.trim(), head.trim().chars().take(12).collect::<String>());
+    println!("HEAD: {} @ {}", branch.trim(), head.trim().chars().take(12).collect::<String>());
     Ok(())
 }

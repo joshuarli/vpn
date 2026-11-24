@@ -1,15 +1,6 @@
 Prefix: VPN
 Next: 11
 
-### VPN-5 · P1 · Update peer address only after reorder acceptance
-
-- **Area:** Security
-- **Where:** src/tunnel.rs (server receive path, peer tracking)
-- **Problem:** After a datagram authenticates the server stores its source as the client address before the reorder stage checks the counter. Replaying a captured datagram from another address, even a duplicate the reorder stage drops, redirects every later server-to-client packet to the replaying address.
-- **Recommendation:** Move the peer-address update after the reorder decision, or bind it to an accepted non-duplicate counter. Add a regression test replaying a duplicate from a different address.
-- **Fix with:** none
-- **Effort:** S
-
 ### VPN-6 · P1 · Do not let an old-epoch replay reset reorder state
 
 - **Area:** Security

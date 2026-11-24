@@ -12,7 +12,7 @@ use crate::proto::{
     Accepted, ClientRx, Codec, ENCRYPTED_BANNER, HEADER_LEN, Header, KEY_LEN, MAX_DATAGRAM_LEN,
     MAX_PACKET_LEN, ProbeSender, Sender, ServerRx, TAG_LEN,
 };
-use crate::reorder::{Delivery, Diag, Reorder, Sink};
+use crate::reorder::{Delivery, Diag, Outcome, Reorder, Sink, Timespec};
 use crate::{EVENT_POLL_TIMEOUT_MS, RECONNECT_ATTEMPTS, reconnect_delay_secs};
 
 const POLLFD_TUN: usize = 0;
@@ -300,8 +300,8 @@ struct Tunnel {
     server_ip: CString,
     port: CString,
     firewall: Firewall,
-    client_addr: SockAddr,
-    client_connected: bool,
+    /// Server only: where to send, set by the last datagram the reorder stage accepted.
+    client: Option<SockAddr>,
     sender: Sender,
     /// Lives as long as the process so probes stay unique across reconnects.
     probes: ProbeSender,
@@ -328,8 +328,7 @@ impl Tunnel {
             server_ip: setup.server_ip,
             port: setup.port,
             firewall: setup.firewall,
-            client_addr: SockAddr::empty(),
-            client_connected: false,
+            client: None,
             sender: setup.sender,
             probes: setup.probes,
             codec: setup.codec,
@@ -371,8 +370,7 @@ impl Tunnel {
     }
 
     fn reconnect(&mut self) -> bool {
-        self.client_connected = false;
-        self.client_addr = SockAddr::empty();
+        self.client = None;
         if self.udp_fd != -1 {
             os::close(self.udp_fd);
             self.udp_fd = -1;
@@ -501,10 +499,10 @@ impl Tunnel {
                 os::err_display(&format_args!("{} ({len} bytes)\n", mtu::OVERSIZED_PACKET_PREFIX));
                 return Flow::Continue;
             }
-            if self.is_server && self.client_connected {
+            if let (true, Some(client)) = (self.is_server, &self.client) {
                 let header = self.sender.next_header();
                 let n = self.codec.seal(&header, &self.tun_in[..len], &mut self.tx);
-                if os::sendmsg3(self.udp_fd, &self.client_addr, &parts(&self.tx[..n])) < 0
+                if os::sendmsg3(self.udp_fd, client, &parts(&self.tx[..n])) < 0
                     && !would_block(os::errno())
                 {
                     os::perror(c"Unable to send UDP packet to client");
@@ -549,15 +547,13 @@ impl Tunnel {
                 }
             }
             ServerRx::Rejected(rejection) => os::err_display(&rejection),
-            ServerRx::Accepted(Accepted { header, payload }) => {
-                self.client_addr = from;
-                if !self.client_connected {
+            ServerRx::Accepted(accepted) => {
+                let mut sink = TunSink { tun_fd: self.tun_fd };
+                let now = os::monotonic();
+                if accept_from_client(&mut self.client, &mut self.reorder, now, accepted, from, &mut sink) {
                     let host = os::numeric_host(&from);
                     os::out(&[b"Client connected from [".as_slice(), &host, b"]\n"].concat());
-                    self.client_connected = true;
                 }
-                let mut sink = TunSink { tun_fd: self.tun_fd };
-                self.reorder.process(os::monotonic(), header.random, header.counter, payload, &mut sink);
             }
         }
         Flow::Continue
@@ -585,5 +581,59 @@ impl Tunnel {
                 Flow::Continue
             }
         }
+    }
+}
+
+/// Server handling of one authenticated datagram from `from`. The reorder stage decides first; only
+/// a datagram it did not drop as a duplicate or stale packet moves the peer to `from`, so a replay
+/// from another address cannot redirect the tunnel. Returns true when this datagram established
+/// the peer.
+fn accept_from_client<A, S: Sink>(
+    peer: &mut Option<A>,
+    reorder: &mut Reorder,
+    now: Timespec,
+    accepted: Accepted<'_>,
+    from: A,
+    sink: &mut S,
+) -> bool {
+    let outcome =
+        reorder.process(now, accepted.header.random, accepted.header.counter, accepted.payload, sink);
+    if outcome == Outcome::Dropped {
+        return false;
+    }
+    peer.replace(from).is_none()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::proto::Header;
+
+    #[derive(Default)]
+    struct Delivered(Vec<Vec<u8>>);
+
+    impl Sink for Delivered {
+        fn deliver(&mut self, _: Delivery, packet: &[u8]) {
+            self.0.push(packet.to_vec());
+        }
+        fn diag(&mut self, _: &Diag) {}
+    }
+
+    fn data(random: u64, counter: u64, payload: &[u8]) -> Accepted<'_> {
+        Accepted { header: Header { random, counter }, payload }
+    }
+
+    #[test]
+    fn a_replayed_duplicate_from_another_address_does_not_move_the_peer() {
+        let mut reorder = Reorder::new(Timespec::default());
+        let mut sink = Delivered::default();
+        let mut peer = None;
+        let now = Timespec::default();
+        assert!(accept_from_client(&mut peer, &mut reorder, now, data(5, 1, b"a"), "client", &mut sink));
+        assert!(!accept_from_client(&mut peer, &mut reorder, now, data(5, 1, b"a"), "attacker", &mut sink));
+        assert_eq!(peer, Some("client"));
+        assert!(!accept_from_client(&mut peer, &mut reorder, now, data(5, 2, b"b"), "roamed", &mut sink));
+        assert_eq!(peer, Some("roamed"));
+        assert_eq!(sink.0, [b"a".to_vec(), b"b".to_vec()]);
     }
 }

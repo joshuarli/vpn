@@ -26,8 +26,8 @@ fn git<'a>(cmd: &'a mut Command, dir: &Path) -> &'a mut Command {
 
 fn state() -> Result<()> {
     let root = util::repo_root();
-    let plan = util::read(&root.join("plan.md"))?;
-    let status = plan
+    let roadmap = util::read(&root.join("docs/roadmap.md"))?;
+    let status = roadmap
         .split("## Status")
         .nth(1)
         .and_then(|s| s.split("\n## ").next())

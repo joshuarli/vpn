@@ -47,6 +47,12 @@ disjoint nonces:
   It echoes a probe only when its counter is above every probe it has echoed
   from the same sender process, and it remembers the last 64 such senders.
 
+Replay protection is held in memory and has no handshake. A receiver drops
+counters it has already delivered and datagrams from the last 64 sender epochs
+it has replaced. After a receiver restart, or once 64 newer epochs have pushed
+out the epoch of a captured datagram, that datagram is accepted as the start
+of a new epoch and delivered once.
+
 This format is not compatible with the C original, which sealed every probe
 under the fixed all-`0xFF` header.
 

@@ -153,8 +153,8 @@ impl CliError {
     }
 }
 
-/// C `atoi` on a 64-bit glibc target: `strtol` in base 10 saturating at the `long` limits, then
-/// truncated to the low 32 bits.
+/// C `atoi` on an LP64 target: `strtol` in base 10 saturating at the `long` limits, then
+/// truncated to the low 32 bits. glibc and musl agree on this behavior.
 pub fn atoi(s: &[u8]) -> i32 {
     let mut i = 0;
     while i < s.len() && (s[i] == b' ' || (9..=13).contains(&s[i])) {
@@ -514,7 +514,7 @@ mod tests {
     }
 
     #[test]
-    fn atoi_truncates_wrapped_long_to_int_like_glibc() {
+    fn atoi_truncates_wrapped_long_to_int_on_lp64() {
         assert_eq!(atoi(b"4294968716"), 1420);
         assert_eq!(atoi(b"2147483648"), i32::MIN);
         assert_eq!(atoi(b"-2147483649"), i32::MAX);

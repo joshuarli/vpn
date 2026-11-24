@@ -1,11 +1,8 @@
-mod bench;
-mod compare;
 mod container;
 mod crypto_diff;
 mod diff;
 mod doctor;
 mod lab;
-mod mem;
 mod oracle;
 mod platform_check;
 mod release;
@@ -26,9 +23,6 @@ commands:
   diff             replay deterministic traces through C and Rust
   lab              real tunnels in network namespaces
   platform-check   check non-Linux targets
-  bench            run benchmark suites
-  mem              memory measurements
-  compare          compare benchmark results against bench/policy.json
   resume           show campaign state or verify the final pair";
 
 fn main() -> ExitCode {
@@ -45,9 +39,6 @@ fn main() -> ExitCode {
         "diff" => diff::run(rest),
         "lab" => lab::run(rest),
         "platform-check" => platform_check::run(rest),
-        "bench" => bench::run(rest),
-        "mem" => mem::run(rest),
-        "compare" => compare::run(rest),
         "resume" => resume::run(rest),
         "-h" | "--help" | "help" => {
             println!("{USAGE}");

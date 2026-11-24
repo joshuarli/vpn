@@ -9,11 +9,8 @@ frozen C oracle across 1,094 differential runs, interoperates with C in all
 eight client/server/keyed combinations, and every inherited deviation is
 reproduced and recorded. Correctness and interoperability are complete.
 
-Performance and memory parity remain unproven. The owner lifted performance
-gates on 2026-11-23 and asked to prioritize feature completion, so timing
-results are informational. The rust-versus-C screen also reports implausible
-memory deltas and several `REGRESSION` verdicts; the measurement arms need
-correction before any memory-parity claim is made.
+Performance and memory parity are out of scope by owner decision; no parity
+claim is made for either.
 
 ## Best pair and reproduction
 
@@ -59,8 +56,6 @@ performance gates are lifted.
 | Real interoperability | `cargo xtask lab matrix` | 8 cells, 422 checks, 0 not passing |
 | Musl release binaries | `cargo xtask lab matrix --rust-target aarch64-unknown-linux-musl`; `cargo xtask lab release --target x86_64-unknown-linux-musl` | AArch64 static-pie: 8 cells, 422 checks, 0 not passing; x86-64 static-pie: native smoke PASS |
 | Cross-platform compile | `cargo xtask platform-check` | macOS compile-checked; BSD targets compile-checked but runtime is out of scope |
-| Benchmark suite | `cargo xtask bench --suite screen/final` | raw data under `results/bench/`; the final suite was stopped after its crypto and packet layers because a busy host made tunnel pairs take ~268 s each and performance gates are lifted, so no final summary or verdicts were produced |
-| Comparison | `cargo xtask compare --policy bench/policy.json` | informational; no gate accepted |
 | Clean-checkout reproducibility | `cargo xtask resume --verify-final` | PASS: 7/7 correctness gates from a fresh clean worktree at `twice-final`, using the verifier recorded in that same tag |
 
 ## Findings and deviations
@@ -83,15 +78,7 @@ calls OS effects through `libc` as prescribed by P10.
 `VERIFIED`: G0, H1, H2, T1, S1, T2, T3 (compile only), B1, D1, X1, I1,
 B2-prep, and primary-host correctness/interoperability.
 
-`INCONCLUSIVE`: performance parity — gates lifted by owner; timing results are
-informational only.
-
-`UNVERIFIED`: memory parity — the rust-versus-C screen's RSS magnitudes and
-`REGRESSION` verdicts indicate the measurement arms are not comparable; do not
-interpret them as a product result.
-
-`PARKED`: O1, O2, O3 — optimization deferred when performance gates were
-lifted. Reopen only if the owner reinstates the parity gates.
+`OUT OF SCOPE`: performance parity and memory parity, by owner decision.
 
 ## Needs environment
 

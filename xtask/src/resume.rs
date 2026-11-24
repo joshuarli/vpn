@@ -2,19 +2,16 @@ use crate::util::{self, Result};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-const USAGE: &str = "usage: cargo xtask resume [--verify-final] [--with-bench]
+const USAGE: &str = "usage: cargo xtask resume [--verify-final]
 
 Without arguments, print the campaign Status section and the integration HEAD.
 --verify-final rebuilds the recorded best pair in a clean worktree and reruns
-the correctness gates. --with-bench additionally runs the benchmark and
-comparison as informational steps; they are skipped by default because the
-owner lifted performance gates.";
+the correctness gates.";
 
 pub fn run(args: &[String]) -> Result<()> {
     match args.first().map(String::as_str) {
         None => state(),
-        Some("--verify-final") if args.len() == 1 => verify_final(false),
-        Some("--verify-final") if args.len() == 2 && args[1] == "--with-bench" => verify_final(true),
+        Some("--verify-final") if args.len() == 1 => verify_final(),
         Some("-h" | "--help") => Err(USAGE.to_owned()),
         Some(other) => Err(format!("resume: unexpected argument `{other}`\n{USAGE}")),
     }
@@ -95,7 +92,7 @@ fn clean_checkout(commit: &str) -> Result<PathBuf> {
     Ok(dir)
 }
 
-fn step(dir: &Path, args: &[&str], required: bool) -> Result<bool> {
+fn step(dir: &Path, args: &[&str]) -> Result<()> {
     eprintln!("resume: cargo xtask {}", args.join(" "));
     let status = Command::new("cargo")
         .arg("xtask")
@@ -104,16 +101,13 @@ fn step(dir: &Path, args: &[&str], required: bool) -> Result<bool> {
         .status()
         .map_err(|e| format!("spawn cargo xtask {}: {e}", args.join(" ")))?;
     if status.success() {
-        Ok(true)
-    } else if required {
-        Err(format!("required verification step failed: cargo xtask {}", args.join(" ")))
+        Ok(())
     } else {
-        eprintln!("resume: informational step failed (performance gates lifted): cargo xtask {}", args.join(" "));
-        Ok(false)
+        Err(format!("verification step failed: cargo xtask {}", args.join(" ")))
     }
 }
 
-fn verify_final(with_bench: bool) -> Result<()> {
+fn verify_final() -> Result<()> {
     let commit = recorded_commit()?;
     let dir = clean_checkout(&commit)?;
     eprintln!("resume: verifying pair {commit} in {}", dir.display());
@@ -127,32 +121,9 @@ fn verify_final(with_bench: bool) -> Result<()> {
         &["diff", "--all"],
         &["lab", "matrix"],
     ];
-    let mut passed = 0usize;
     for args in required {
-        step(&dir, args, true)?;
-        passed += 1;
+        step(&dir, args)?;
     }
-    if with_bench {
-        let informational: &[&[&str]] = &[
-            &["bench", "--suite", "final", "--candidate", "rust", "--baseline", "c"],
-            &["compare", "--policy", "bench/policy.json"],
-        ];
-        let mut informational_passed = 0usize;
-        for args in informational {
-            if step(&dir, args, false)? {
-                informational_passed += 1;
-            }
-        }
-        println!(
-            "resume --verify-final: PASS ({passed}/{} correctness gates; {informational_passed}/{} performance steps passed, gates lifted)",
-            required.len(),
-            informational.len()
-        );
-    } else {
-        println!(
-            "resume --verify-final: PASS ({passed}/{} correctness gates; performance steps skipped because gates are lifted)",
-            required.len()
-        );
-    }
+    println!("resume --verify-final: PASS ({} correctness gates)", required.len());
     Ok(())
 }

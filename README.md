@@ -1,9 +1,7 @@
 # twice
 
-A Rust point-to-point VPN tunnel using HiAE from the `laputa-systems/graviola`
-fork. It began as a byte-compatible port of `jedisct1/twice`; that compatibility
-goal is retired, and [docs/report.md](docs/report.md) records the historical
-parity evidence.
+A standalone Rust point-to-point VPN tunnel using HiAE from the
+`laputa-systems/graviola` fork.
 
 ## Requirements
 
@@ -52,9 +50,6 @@ counters it has already delivered and datagrams from the last 64 sender epochs
 it has replaced. After a receiver restart, or once 64 newer epochs have pushed
 out the epoch of a captured datagram, that datagram is accepted as the start
 of a new epoch and delivered once.
-
-This format is not compatible with the C original, which sealed every probe
-under the fixed all-`0xFF` header.
 
 ## Verification
 

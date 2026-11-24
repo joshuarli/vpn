@@ -4,24 +4,11 @@ This is the single plan for this repository: all current and future work, and th
 
 ## Status
 
-- **Goal:** maintain `twice` as a standalone Rust point-to-point VPN tunnel and add SOCKS5 proxying as a second networking mode. Byte parity with the C original, and performance and memory parity against it, were retired by owner decision; [report.md](report.md) is the historical record.
-- **Last accepted pair:** `twice-final`, the tag on the final integration commit. The oracle, harness, ledger, and verifier that proved it live in that tag, not in the working tree.
+- **Goal:** maintain `twice` as a standalone Rust point-to-point VPN tunnel and add SOCKS5 proxying as a second networking mode.
 - **Running:** none.
-- **Backlog:** the eight inherited weaknesses from the C original were fixed on 2026-11-24. Of the three follow-up replay and reflection tickets, the reconnect replay and probe reflection were fixed on 2026-11-24. VPN-12 (replay across a receiver restart) awaits an owner decision between a handshake and a persisted epoch record, tracked in [TODO.md](../TODO.md). The proxy campaign below is greenlit but not started.
+- **Backlog:** VPN-12 (replay across a receiver restart) awaits an owner decision between a handshake and a persisted epoch record, tracked in [TODO.md](../TODO.md). The proxy campaign below is greenlit but not started.
 - **Next slice:** decide the encrypted proxy transport and whether Rustls may become a production dependency, then implement rootless SOCKS5 CONNECT with remote DNS.
-- **Needs environment:** native macOS runtime proof needs password-enabled `sudo` on `m1-max`. VAES/AVX512 has no host. BSD runtime is out of scope by owner decision 2026-11-23.
 - **Resume:** read this Status, run `git status -sb` and `git worktree list`, then run `cargo xtask resume`.
-
-| Completed work (historical) | State |
-| --- | --- |
-| C reference and baseline | Accepted: pins, oracle build, lab image |
-| Graviola HiAE byte parity | Verified arm-neon and arm-sha3 native; AES-NI bytes under QEMU (`ad177b4`) |
-| Rust behavioral parity | Verified on primary host: 1,094 diff runs, 82 mutants over 21 areas, 19 ledger entries |
-| Real C/Rust interoperability | Verified on primary host: 8 matrix cells, 422 checks |
-| Performance and memory parity | Out of scope by owner decision |
-| Native platform gates | Linux AArch64 and x86-64 musl verified; macOS compile-checked only; BSD out of scope |
-
-Gate states are `VERIFIED`, `FAILED`, `BLOCKED`, `INCONCLUSIVE`, and `UNVERIFIED`. Primary-host completion and full-platform completion are reported separately.
 
 ## Sequence
 
@@ -30,10 +17,6 @@ Gate states are `VERIFIED`, `FAILED`, `BLOCKED`, `INCONCLUSIVE`, and `UNVERIFIED
 3. Add SOCKS5 UDP ASSOCIATE on a separate datagram transport.
 4. Add client identities, destination policies, statistics, and HTTP CONNECT.
 5. Benchmark against the peers named below. Add multiplexing only if the numbers justify it.
-
-## Campaign: Twice Rust port
-
-The parity campaign is closed. [Acceptance evidence](report.md) records what was verified at `twice-final` and what was never proven. Keep the tag and its compatibility suite indefinitely as the legacy reference.
 
 ## Campaign: SOCKS5 proxy mode
 
@@ -53,13 +36,10 @@ For browsers, CLI tools, containers, and individual applications, proxying is us
 
 | Area | Current state |
 | --- | --- |
-| Twice port | Complete; parity campaign closed at `twice-final` |
-| Oracle, harness, ledger | Retired from the working tree; retained in the `twice-final` tag |
 | Inherited weaknesses | Fixed; follow-up tickets in [TODO.md](../TODO.md) |
 | Production dependencies | `graviola` and `libc` |
 | Encryption | HiAE |
 | Transport | UDP, point-to-point IP packets |
-| Performance and memory parity | Retired by owner decision |
 | Native macOS runtime | Unverified; needs password-enabled `sudo` on `m1-max` |
 
 ### Use mieru as a feature oracle, not a porting target
@@ -131,7 +111,7 @@ Apply these defaults from the first slice:
 
 ### Treat performance as a stretch goal, not a gate
 
-These are targets to aim for, not measured results and not acceptance gates. Performance parity with the C port stays retired.
+These are targets to aim for, not measured results and not acceptance gates.
 
 | Metric | Target |
 | --- | --- |
@@ -148,7 +128,7 @@ Benchmark against mieru, OpenSSH dynamic forwarding, Shadowsocks Rust, and direc
 
 ### Keep the legacy boundary explicit
 
-The inherited Twice weaknesses were acceptable inside the exact-port campaign, where parity required reproducing them. They must not constrain the new product. The proxy mode must not inherit Twice authentication semantics. Work the remaining tickets in [TODO.md](../TODO.md) on their own merits, independent of proxy work.
+Inherited protocol weaknesses must not constrain the new product. The proxy mode must not inherit Twice authentication semantics. Work the remaining tickets in [TODO.md](../TODO.md) on their own merits, independent of proxy work.
 
 ### Record what is not yet verified
 
@@ -156,4 +136,4 @@ The review behind this campaign did not audit mieru's cryptography, verify the R
 
 ## Handoff
 
-The accepted pair and historical acceptance evidence live in [report.md](report.md). The Twice backlog lives in [TODO.md](../TODO.md). Resume from **Status**, then work through **Sequence**.
+The open protocol backlog lives in [TODO.md](../TODO.md). Resume from **Status**, then work through **Sequence**.

@@ -31,6 +31,22 @@ mode `0600`.
 
 Run `./target/release/twice` with no arguments to see the full usage text.
 
+## Wire format
+
+Each UDP datagram is a 16-byte header, the HiAE ciphertext, and a 16-byte tag.
+The header is two little-endian 64-bit values, `random` and `counter`, and is
+the cipher nonce. Both peers use the same key, so data and MTU probes use
+disjoint nonces:
+
+- Data: `random` is the sender's session value and `counter` counts up from 1.
+  `random` is never `2^64-1`.
+- MTU probe: `random` is `2^64-1` and `counter` is the sender's session value
+  plus the number of probes it has sent. The payload is `0xAA` bytes, and the
+  server echoes the datagram unchanged.
+
+This format is not compatible with the C original, which sealed every probe
+under the fixed all-`0xFF` header.
+
 ## Verification
 
 `cargo xtask test` runs the unit suite. `cargo xtask lab smoke` runs a real

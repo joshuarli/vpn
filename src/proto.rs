@@ -12,6 +12,11 @@ pub const PROBE_FILL: u8 = 0xAA;
 pub const TOO_SMALL_MESSAGE: &str = "Packet too small (missing authentication tag)\n";
 
 /// Random value and counter, little-endian on the wire. The 16 encoded bytes are the cipher nonce.
+///
+/// Data and MTU probes share one key, so their nonces live in disjoint domains: a data header
+/// never has `random == PROBE_MAGIC`, and a probe header always does. A probe's counter is the
+/// sender's session random plus a per-process probe sequence number, so every probe datagram is
+/// sealed under a fresh nonce.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Header {
     pub random: u64,
@@ -19,8 +24,6 @@ pub struct Header {
 }
 
 impl Header {
-    pub const PROBE: Header = Header { random: PROBE_MAGIC, counter: PROBE_MAGIC };
-
     pub fn to_bytes(self) -> [u8; HEADER_LEN] {
         let mut out = [0u8; HEADER_LEN];
         out[..8].copy_from_slice(&self.random.to_le_bytes());
@@ -36,12 +39,18 @@ impl Header {
     }
 
     pub fn is_probe(&self) -> bool {
-        self.random == PROBE_MAGIC && self.counter == PROBE_MAGIC
+        self.random == PROBE_MAGIC
     }
 }
 
-/// Outgoing header sequence: the counter starts at 0 and is incremented before each use; after
-/// `u64::MAX` the random value is incremented and the counter restarts at 0.
+/// Maps a random value into the data domain, which excludes `PROBE_MAGIC`.
+const fn data_random(random: u64) -> u64 {
+    if random == PROBE_MAGIC { 0 } else { random }
+}
+
+/// Outgoing data header sequence: the counter starts at 0 and is incremented before each use;
+/// after `u64::MAX` the random value is incremented and the counter restarts at 0. The random
+/// value skips `PROBE_MAGIC`, which is reserved for probes.
 #[derive(Clone, Copy, Debug)]
 pub struct Sender {
     random: u64,
@@ -50,16 +59,16 @@ pub struct Sender {
 
 impl Sender {
     pub const fn new(random: u64) -> Sender {
-        Sender { random, counter: 0 }
+        Sender { random: data_random(random), counter: 0 }
     }
 
     pub const fn with_state(random: u64, counter: u64) -> Sender {
-        Sender { random, counter }
+        Sender { random: data_random(random), counter }
     }
 
     pub fn next_header(&mut self) -> Header {
         if self.counter == u64::MAX {
-            self.random = self.random.wrapping_add(1);
+            self.random = data_random(self.random.wrapping_add(1));
             self.counter = 0;
         } else {
             self.counter += 1;
@@ -73,6 +82,26 @@ impl Sender {
 
     pub fn counter(&self) -> u64 {
         self.counter
+    }
+}
+
+/// Outgoing probe header sequence: `random` is `PROBE_MAGIC` and the counter is the session
+/// random plus the number of probes sent before, so no two probes of one process share a nonce.
+#[derive(Clone, Copy, Debug)]
+pub struct ProbeSender {
+    base: u64,
+    sent: u64,
+}
+
+impl ProbeSender {
+    pub const fn new(session_random: u64) -> ProbeSender {
+        ProbeSender { base: session_random, sent: 0 }
+    }
+
+    pub fn next_header(&mut self) -> Header {
+        let header = Header { random: PROBE_MAGIC, counter: self.base.wrapping_add(self.sent) };
+        self.sent += 1;
+        header
     }
 }
 
@@ -182,10 +211,12 @@ impl<C: Cipher> Codec<C> {
         self.seal_in_place(header, out, payload.len())
     }
 
-    /// Seals an MTU probe whose payload is `data_len` bytes of `0xAA`.
-    pub fn seal_probe(&self, data_len: usize, out: &mut [u8]) -> usize {
+    /// Seals an MTU probe whose payload is `data_len` bytes of `0xAA`. `header` must come from a
+    /// `ProbeSender`.
+    pub fn seal_probe(&self, header: &Header, data_len: usize, out: &mut [u8]) -> usize {
+        debug_assert!(header.is_probe());
         out[HEADER_LEN..HEADER_LEN + data_len].fill(PROBE_FILL);
-        self.seal_in_place(&Header::PROBE, out, data_len)
+        self.seal_in_place(header, out, data_len)
     }
 
     fn seal_in_place(&self, header: &Header, out: &mut [u8], len: usize) -> usize {
@@ -235,18 +266,20 @@ impl<C: Cipher> Codec<C> {
         }
     }
 
-    /// True when `datagram` is an authenticated probe reply carrying exactly `expected_len`
-    /// payload bytes. Any other datagram, including a reply to an earlier probe size, is false.
+    /// True when `datagram` is the authenticated echo of the probe sealed with `probe` and
+    /// carrying exactly `expected_len` payload bytes. Any other datagram, including a reply to an
+    /// earlier probe, is false.
     pub fn is_probe_reply(
         &self,
         datagram: &[u8],
+        probe: &Header,
         expected_len: usize,
         scratch: &mut [u8],
     ) -> bool {
         let Some(frame) = Frame::parse(datagram) else {
             return false;
         };
-        if !frame.header.is_probe() {
+        if !frame.header.is_probe() || frame.header != *probe {
             return false;
         }
         match self.open(&frame, scratch) {
@@ -326,6 +359,7 @@ mod tests {
     }
 
     const H: Header = Header { random: 0x0102_0304_0506_0708, counter: 0x1112_1314_1516_1718 };
+    const P: Header = Header { random: PROBE_MAGIC, counter: 0x2122_2324_2526_2728 };
 
     #[test]
     fn header_bytes_are_two_little_endian_u64() {
@@ -337,11 +371,37 @@ mod tests {
     }
 
     #[test]
-    fn probe_header_is_sixteen_ff_bytes() {
-        assert_eq!(Header::PROBE.to_bytes(), [0xFF; 16]);
-        assert!(Header::PROBE.is_probe());
-        assert!(!Header { random: u64::MAX, counter: u64::MAX - 1 }.is_probe());
+    fn probe_headers_carry_magic_random_and_count_from_the_session_random() {
+        let mut p = ProbeSender::new(u64::MAX - 1);
+        let a = p.next_header();
+        assert_eq!(a, Header { random: PROBE_MAGIC, counter: u64::MAX - 1 });
+        assert_eq!(&a.to_bytes()[..8], &[0xFF; 8]);
+        assert_eq!(p.next_header(), Header { random: PROBE_MAGIC, counter: u64::MAX });
+        assert_eq!(p.next_header(), Header { random: PROBE_MAGIC, counter: 0 });
+        assert!(a.is_probe());
+        assert!(Header { random: u64::MAX, counter: 0 }.is_probe());
         assert!(!Header { random: u64::MAX - 1, counter: u64::MAX }.is_probe());
+    }
+
+    #[test]
+    fn data_headers_never_use_the_probe_random() {
+        let mut s = Sender::new(PROBE_MAGIC);
+        assert_eq!(s.next_header(), Header { random: 0, counter: 1 });
+        let mut s = Sender::with_state(PROBE_MAGIC - 1, u64::MAX);
+        assert_eq!(s.next_header(), Header { random: 0, counter: 0 });
+        let mut s = Sender::with_state(PROBE_MAGIC, 5);
+        assert!(!s.next_header().is_probe());
+    }
+
+    #[test]
+    fn two_same_size_probes_differ_on_the_wire() {
+        let c = codec();
+        let mut p = ProbeSender::new(0x1234);
+        let (mut a, mut b) = (vec![0u8; 132], vec![0u8; 132]);
+        c.seal_probe(&p.next_header(), 100, &mut a);
+        c.seal_probe(&p.next_header(), 100, &mut b);
+        assert_ne!(a[..16], b[..16]);
+        assert_ne!(a[16..], b[16..]);
     }
 
     #[test]
@@ -356,8 +416,8 @@ mod tests {
     }
 
     #[test]
-    fn sender_random_wraps_at_u64_max() {
-        let mut s = Sender::with_state(u64::MAX, u64::MAX);
+    fn sender_random_wraps_past_the_probe_random() {
+        let mut s = Sender::with_state(u64::MAX - 1, u64::MAX);
         assert_eq!(s.next_header(), Header { random: 0, counter: 0 });
     }
 
@@ -496,7 +556,7 @@ mod tests {
     fn client_passes_authenticated_probe_reply_to_the_stream() {
         let c = codec();
         let mut d = vec![0u8; 16 + 40 + 16];
-        c.seal_probe(40, &mut d);
+        c.seal_probe(&P, 40, &mut d);
         let mut scratch = [0u8; 64];
         match c.client_receive(&d, &mut scratch) {
             ClientRx::Accepted(a) => {
@@ -525,28 +585,30 @@ mod tests {
     fn probe_seal_uses_magic_header_and_encrypts_aa_fill() {
         let c = codec();
         let mut d = vec![0u8; 16 + 100 + 16];
-        assert_eq!(c.seal_probe(100, &mut d), 132);
-        assert_eq!(&d[..16], &[0xFF; 16]);
+        assert_eq!(c.seal_probe(&P, 100, &mut d), 132);
+        assert_eq!(&d[..16], &P.to_bytes());
         let mut s = vec![0u8; 128];
         let frame = Frame::parse(&d).unwrap();
         assert_eq!(c.open(&frame, &mut s).unwrap(), &[0xAA; 100][..]);
     }
 
     #[test]
-    fn probe_reply_requires_magic_valid_tag_and_exact_size() {
+    fn probe_reply_requires_the_sent_header_valid_tag_and_exact_size() {
         let c = codec();
         let mut d = vec![0u8; 16 + 100 + 16];
-        c.seal_probe(100, &mut d);
+        c.seal_probe(&P, 100, &mut d);
         let mut s = vec![0u8; 256];
-        assert!(c.is_probe_reply(&d, 100, &mut s));
-        assert!(!c.is_probe_reply(&d, 99, &mut s));
-        assert!(!c.is_probe_reply(&d, 101, &mut s));
+        assert!(c.is_probe_reply(&d, &P, 100, &mut s));
+        assert!(!c.is_probe_reply(&d, &P, 99, &mut s));
+        assert!(!c.is_probe_reply(&d, &P, 101, &mut s));
+        let next = Header { random: PROBE_MAGIC, counter: P.counter + 1 };
+        assert!(!c.is_probe_reply(&d, &next, 100, &mut s));
         let mut bad = d.clone();
         bad[40] ^= 1;
-        assert!(!c.is_probe_reply(&bad, 100, &mut s));
-        assert!(!c.is_probe_reply(&d[..31], 0, &mut s));
+        assert!(!c.is_probe_reply(&bad, &P, 100, &mut s));
+        assert!(!c.is_probe_reply(&d[..31], &P, 0, &mut s));
         let data = sealed(&c, H, &[0xAA; 100]);
-        assert!(!c.is_probe_reply(&data, 100, &mut s));
+        assert!(!c.is_probe_reply(&data, &H, 100, &mut s));
     }
 
     #[test]
@@ -567,3 +629,4 @@ mod tests {
         assert_eq!(ENCRYPTED_BANNER, "Running in encrypted mode with authentication\n");
     }
 }
+

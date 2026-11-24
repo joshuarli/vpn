@@ -1,15 +1,6 @@
 Prefix: VPN
 Next: 11
 
-### VPN-3 · P1 · Stop reusing a fixed nonce for keyed MTU probes
-
-- **Area:** Security
-- **Where:** src/proto.rs:22 (PROBE header), src/proto.rs:220-233 (seal_probe)
-- **Problem:** Every MTU probe uses the constant all-ones header as its HiAE nonce with the real key and a constant 0xAA plaintext, so same-size probes encrypt to identical datagrams under one key and nonce. That reuse breaks the cipher's nonce contract.
-- **Recommendation:** Derive a unique probe nonce from the session random value and a probe counter, record the wire-format decision, and test that two same-size probes under one key differ on the wire.
-- **Fix with:** none
-- **Effort:** M
-
 ### VPN-5 · P1 · Update peer address only after reorder acceptance
 
 - **Area:** Security

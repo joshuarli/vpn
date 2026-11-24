@@ -9,8 +9,8 @@ use crate::crypto::{self, HiAeCipher, UnsupportedCpu};
 use crate::mtu::{self, Discovery, Effect};
 use crate::os::{self, Fd, IfName, KeyRead, OsFailure, Shell, SockAddr};
 use crate::proto::{
-    Accepted, ClientRx, Codec, ENCRYPTED_BANNER, HEADER_LEN, KEY_LEN, MAX_DATAGRAM_LEN,
-    MAX_PACKET_LEN, Sender, ServerRx, TAG_LEN,
+    Accepted, ClientRx, Codec, ENCRYPTED_BANNER, HEADER_LEN, Header, KEY_LEN, MAX_DATAGRAM_LEN,
+    MAX_PACKET_LEN, ProbeSender, Sender, ServerRx, TAG_LEN,
 };
 use crate::reorder::{Delivery, Diag, Reorder, Sink};
 use crate::{EVENT_POLL_TIMEOUT_MS, RECONNECT_ATTEMPTS, reconnect_delay_secs};
@@ -225,6 +225,7 @@ fn start(run: Run) -> i32 {
         firewall,
         codec,
         sender: Sender::new(u64::from_ne_bytes(packet_random)),
+        probes: ProbeSender::new(u64::from_ne_bytes(packet_random)),
     });
     let ok = tunnel.doit();
     tunnel.firewall.apply(false, false);
@@ -248,6 +249,7 @@ struct Setup {
     firewall: Firewall,
     codec: Codec<HiAeCipher>,
     sender: Sender,
+    probes: ProbeSender,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -301,6 +303,8 @@ struct Tunnel {
     client_addr: SockAddr,
     client_connected: bool,
     sender: Sender,
+    /// Lives as long as the process so probes stay unique across reconnects.
+    probes: ProbeSender,
     codec: Codec<HiAeCipher>,
     reorder: Reorder,
     fds: [libc::pollfd; 2],
@@ -327,6 +331,7 @@ impl Tunnel {
             client_addr: SockAddr::empty(),
             client_connected: false,
             sender: setup.sender,
+            probes: setup.probes,
             codec: setup.codec,
             reorder: Reorder::new(os::monotonic()),
             fds: [
@@ -429,7 +434,8 @@ impl Tunnel {
 
     fn discover(&mut self) -> i32 {
         let mut discovery = Discovery::new(self.is_server);
-        let mut probe_len = 0usize;
+        // The probe in flight and its payload length; `AwaitReply` always follows `SendProbe`.
+        let mut in_flight: Option<(Header, usize)> = None;
         loop {
             match discovery.step() {
                 Effect::Print { text, flush } => {
@@ -439,13 +445,16 @@ impl Tunnel {
                     }
                 }
                 Effect::SendProbe { data_len } => {
-                    probe_len = data_len;
-                    let n = self.codec.seal_probe(data_len, &mut self.tx);
+                    let probe = self.probes.next_header();
+                    in_flight = Some((probe, data_len));
+                    let n = self.codec.seal_probe(&probe, data_len, &mut self.tx);
                     let sent = os::writev3(self.udp_fd, &parts(&self.tx[..n]));
                     discovery.sent(sent >= 0);
                 }
                 Effect::AwaitReply { timeout_ms } => {
-                    let valid = self.await_probe_reply(timeout_ms, probe_len);
+                    let valid = in_flight.is_some_and(|(probe, len)| {
+                        self.await_probe_reply(timeout_ms, &probe, len)
+                    });
                     discovery.replied(valid);
                 }
                 Effect::Done { tun_mtu } => return tun_mtu,
@@ -453,7 +462,7 @@ impl Tunnel {
         }
     }
 
-    fn await_probe_reply(&mut self, timeout_ms: i32, expected_len: usize) -> bool {
+    fn await_probe_reply(&mut self, timeout_ms: i32, probe: &Header, expected_len: usize) -> bool {
         let mut pfd = libc::pollfd { fd: self.udp_fd, events: libc::POLLIN, revents: 0 };
         if os::poll(std::slice::from_mut(&mut pfd), timeout_ms) <= 0 {
             return false;
@@ -462,7 +471,7 @@ impl Tunnel {
         if n < (HEADER_LEN + TAG_LEN) as isize {
             return false;
         }
-        self.codec.is_probe_reply(&self.rx[..n as usize], expected_len, &mut self.scratch)
+        self.codec.is_probe_reply(&self.rx[..n as usize], probe, expected_len, &mut self.scratch)
     }
 
     fn event_loop(&mut self) -> Flow {

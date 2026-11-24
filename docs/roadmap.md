@@ -7,7 +7,7 @@ This is the single plan for this repository: all current and future work, and th
 - **Goal:** maintain `twice` as a standalone Rust point-to-point VPN tunnel and add SOCKS5 proxying as a second networking mode. Byte parity with the C original, and performance and memory parity against it, were retired by owner decision; [report.md](report.md) is the historical record.
 - **Last accepted pair:** `twice-final`, the tag on the final integration commit. The oracle, harness, ledger, and verifier that proved it live in that tag, not in the working tree.
 - **Running:** none.
-- **Backlog:** eight inherited weaknesses from the C original are tracked in [TODO.md](../TODO.md). The proxy campaign below is greenlit but not started.
+- **Backlog:** the eight inherited weaknesses from the C original were fixed on 2026-11-24. Three follow-up replay and reflection tickets found during that work are open in [TODO.md](../TODO.md). The proxy campaign below is greenlit but not started.
 - **Next slice:** decide the encrypted proxy transport and whether Rustls may become a production dependency, then implement rootless SOCKS5 CONNECT with remote DNS.
 - **Needs environment:** native macOS runtime proof needs password-enabled `sudo` on `m1-max`. VAES/AVX512 has no host. BSD runtime is out of scope by owner decision 2026-11-23.
 - **Resume:** read this Status, run `git status -sb` and `git worktree list`, then run `cargo xtask resume`.
@@ -55,7 +55,7 @@ For browsers, CLI tools, containers, and individual applications, proxying is us
 | --- | --- |
 | Twice port | Complete; parity campaign closed at `twice-final` |
 | Oracle, harness, ledger | Retired from the working tree; retained in the `twice-final` tag |
-| Inherited weaknesses | Eight open tickets in [TODO.md](../TODO.md) |
+| Inherited weaknesses | Fixed; follow-up tickets in [TODO.md](../TODO.md) |
 | Production dependencies | `graviola` and `libc` |
 | Encryption | HiAE |
 | Transport | UDP, point-to-point IP packets |
@@ -148,7 +148,7 @@ Benchmark against mieru, OpenSSH dynamic forwarding, Shadowsocks Rust, and direc
 
 ### Keep the legacy boundary explicit
 
-The inherited Twice weaknesses were acceptable inside the exact-port campaign, where parity required reproducing them. They must not constrain the new product. The proxy mode must not inherit Twice authentication semantics. Fix or retire the eight inherited tickets in [TODO.md](../TODO.md) on their own merits, independent of proxy work.
+The inherited Twice weaknesses were acceptable inside the exact-port campaign, where parity required reproducing them. They must not constrain the new product. The proxy mode must not inherit Twice authentication semantics. Work the remaining tickets in [TODO.md](../TODO.md) on their own merits, independent of proxy work.
 
 ### Record what is not yet verified
 
@@ -156,4 +156,4 @@ The review behind this campaign did not audit mieru's cryptography, verify the R
 
 ## Handoff
 
-The accepted pair and historical acceptance evidence live in [report.md](report.md). The inherited weakness backlog lives in [TODO.md](../TODO.md). Resume from **Status**, then work through **Sequence**.
+The accepted pair and historical acceptance evidence live in [report.md](report.md). The Twice backlog lives in [TODO.md](../TODO.md). Resume from **Status**, then work through **Sequence**.

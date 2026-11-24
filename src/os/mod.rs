@@ -631,42 +631,33 @@ pub fn read_key_file(path: &CStr) -> KeyRead {
     if n == key.len() { KeyRead::Loaded(key) } else { KeyRead::Short }
 }
 
-pub fn path_exists(path: &CStr) -> bool {
-    // SAFETY: `path` is NUL-terminated.
-    unsafe { libc::access(path.as_ptr(), libc::F_OK) == 0 }
-}
-
 pub enum CreateOutcome {
+    AlreadyExists,
     CreateFailed,
     WriteFailed,
     Done,
 }
 
-/// `fopen(path, "wb")` and `fwrite`; a short write closes and removes the file.
+/// Creates `path` exclusively (`O_CREAT|O_EXCL`) with mode `0600` and writes `data`. The file is
+/// private from the moment it exists, and an existing file is never opened or replaced. A failed
+/// write removes the file.
 pub fn write_new_file(path: &CStr, data: &[u8]) -> CreateOutcome {
-    // SAFETY: both strings are NUL-terminated.
-    let fp = unsafe { libc::fopen(path.as_ptr(), c"wb".as_ptr()) };
-    if fp.is_null() {
-        return CreateOutcome::CreateFailed;
-    }
-    // SAFETY: `data` is valid for its length and `fp` is an open stream.
-    let written = unsafe { libc::fwrite(data.as_ptr().cast(), 1, data.len(), fp) };
-    if written != data.len() {
-        // SAFETY: `fp` is an open stream that is not used afterwards; `path` is NUL-terminated.
-        unsafe {
-            libc::fclose(fp);
-            libc::unlink(path.as_ptr());
-        }
+    use std::io::{ErrorKind, Write};
+    use std::os::unix::ffi::OsStrExt;
+    use std::os::unix::fs::OpenOptionsExt;
+    let path = std::path::Path::new(std::ffi::OsStr::from_bytes(path.to_bytes()));
+    let mut file = match std::fs::OpenOptions::new().write(true).create_new(true).mode(0o600).open(path)
+    {
+        Ok(f) => f,
+        Err(e) if e.kind() == ErrorKind::AlreadyExists => return CreateOutcome::AlreadyExists,
+        Err(_) => return CreateOutcome::CreateFailed,
+    };
+    if file.write_all(data).and_then(|()| file.sync_all()).is_err() {
+        drop(file);
+        let _ = std::fs::remove_file(path);
         return CreateOutcome::WriteFailed;
     }
-    // SAFETY: `fp` is an open stream that is not used afterwards.
-    unsafe { libc::fclose(fp) };
     CreateOutcome::Done
-}
-
-pub fn chmod_private(path: &CStr) -> bool {
-    // SAFETY: `path` is NUL-terminated.
-    unsafe { libc::chmod(path.as_ptr(), 0o600) == 0 }
 }
 
 /// Runs argv with `fork`, `execvp` and `waitpid`.
@@ -745,6 +736,24 @@ pub fn default_ext_if_name() -> Option<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_new_key_file_is_private_from_creation_and_never_replaces_a_file() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = std::env::temp_dir().join(format!("twice-genkey-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("k");
+        let _ = std::fs::remove_file(&path);
+        let c_path = CString::new(path.as_os_str().as_encoded_bytes()).unwrap();
+        assert!(matches!(write_new_file(&c_path, b"secret"), CreateOutcome::Done));
+        let mode = std::fs::metadata(&path).unwrap().permissions().mode();
+        let second = write_new_file(&c_path, b"other");
+        let content = std::fs::read(&path).unwrap();
+        std::fs::remove_dir_all(&dir).unwrap();
+        assert_eq!(mode & 0o777, 0o600);
+        assert!(matches!(second, CreateOutcome::AlreadyExists));
+        assert_eq!(content, b"secret");
+    }
 
     #[test]
     fn stack_buffer_truncates_instead_of_growing() {

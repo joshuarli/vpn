@@ -45,16 +45,18 @@ pub fn main() -> ! {
 
 fn genkey(path: &OsStr) -> i32 {
     let c_path = c_string(path.as_bytes());
-    if os::path_exists(&c_path) {
-        os::err(&cli::genkey_exists_stderr(path));
-        return cli::EXIT_FAILURE;
-    }
     let mut key = [0u8; KEY_LEN];
     if !os::random_bytes(&mut key) {
         os::err(cli::GENKEY_RANDOM_FAILED_STDERR.as_bytes());
         return cli::EXIT_FAILURE;
     }
-    match os::write_new_file(&c_path, &key) {
+    let outcome = os::write_new_file(&c_path, &key);
+    crypto::wipe(&mut key);
+    match outcome {
+        os::CreateOutcome::AlreadyExists => {
+            os::err(&cli::genkey_exists_stderr(path));
+            return cli::EXIT_FAILURE;
+        }
         os::CreateOutcome::CreateFailed => {
             os::err(&cli::genkey_create_failed_stderr(path));
             return cli::EXIT_FAILURE;
@@ -65,10 +67,6 @@ fn genkey(path: &OsStr) -> i32 {
         }
         os::CreateOutcome::Done => {}
     }
-    if !os::chmod_private(&c_path) {
-        os::err(cli::GENKEY_CHMOD_FAILED_STDERR.as_bytes());
-    }
-    crypto::wipe(&mut key);
     os::out(&cli::genkey_success_stdout(path));
     0
 }

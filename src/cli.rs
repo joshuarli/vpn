@@ -300,7 +300,6 @@ pub fn genkey_create_failed_stderr(path: &OsStr) -> Vec<u8> {
 
 pub const GENKEY_RANDOM_FAILED_STDERR: &str = "Error: Failed to generate random key\n";
 pub const GENKEY_WRITE_FAILED_STDERR: &str = "Error: Failed to write key file\n";
-pub const GENKEY_CHMOD_FAILED_STDERR: &str = "Warning: Failed to set restrictive permissions on key file\n";
 
 pub fn genkey_success_stdout(path: &OsStr) -> Vec<u8> {
     let p = path.as_bytes();

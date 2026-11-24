@@ -10,12 +10,3 @@ Next: 14
 - **Fix with:** architect
 - **Effort:** L
 
-### VPN-13 · P3 · Server echoes replayed authenticated probes to any source
-
-- **Area:** Security
-- **Where:** src/proto.rs (Codec::server_receive EchoProbe), src/tunnel.rs (Tunnel::server_receive)
-- **Problem:** The server authenticates and size-caps probes before echoing, but it does not check probe freshness or the source address. An attacker holding one captured probe can spoof a victim's address and make the server reflect datagrams of up to 8,970 bytes at a 1:1 size ratio.
-- **Recommendation:** Echo a probe only when its counter has not been echoed before (for example, a small recent-probe set), or only to the current peer address once a session exists, and add a test that a repeated probe is not echoed twice.
-- **Fix with:** none
-- **Effort:** S
-

@@ -105,6 +105,50 @@ impl ProbeSender {
     }
 }
 
+/// Number of probe streams whose echoes the server remembers.
+pub const ECHOED_PROBE_STREAMS: usize = 64;
+/// Counter distance within which two probes belong to one stream. A stream is one client process,
+/// whose probe counters rise from its session random; distinct session randoms are 64-bit random.
+const PROBE_STREAM_SPAN: u64 = 1 << 32;
+
+/// Server record of echoed probes: the highest echoed counter of each of the most recent
+/// `ECHOED_PROBE_STREAMS` probe streams. A probe at or below its stream's high-water mark was
+/// already echoed or superseded, so echoing it again would only reflect a capture.
+pub struct ProbeEchoes {
+    highest: [u64; ECHOED_PROBE_STREAMS],
+    len: usize,
+    next: usize,
+}
+
+impl Default for ProbeEchoes {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ProbeEchoes {
+    pub const fn new() -> Self {
+        ProbeEchoes { highest: [0; ECHOED_PROBE_STREAMS], len: 0, next: 0 }
+    }
+
+    /// Records `counter` and returns true when no probe at or above it was echoed in its stream.
+    fn admit(&mut self, counter: u64) -> bool {
+        for highest in self.highest[..self.len].iter_mut() {
+            if highest.wrapping_sub(counter) < PROBE_STREAM_SPAN {
+                return false;
+            }
+            if counter.wrapping_sub(*highest) < PROBE_STREAM_SPAN {
+                *highest = counter;
+                return true;
+            }
+        }
+        self.highest[self.next] = counter;
+        self.next = (self.next + 1) % ECHOED_PROBE_STREAMS;
+        self.len = (self.len + 1).min(ECHOED_PROBE_STREAMS);
+        true
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AuthError;
 
@@ -174,11 +218,11 @@ pub struct Accepted<'a> {
 /// Server handling of one received datagram, before any side effect on peer state.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ServerRx<'a> {
-    /// Fewer than 16 bytes, or a probe header on a datagram larger than any probe discovery
-    /// sends: nothing happens, nothing is logged.
+    /// Fewer than 16 bytes, a probe header on a datagram larger than any probe discovery sends,
+    /// or an authenticated probe already echoed: nothing happens, nothing is logged.
     Ignored,
-    /// An authenticated probe no larger than `MAX_PROBE_DATAGRAM_LEN`: send the whole datagram
-    /// back to the sender unchanged.
+    /// An authenticated probe no larger than `MAX_PROBE_DATAGRAM_LEN` that was not echoed before:
+    /// send the whole datagram back to the sender unchanged.
     EchoProbe,
     /// Log the rejection and drop; the peer address is not updated.
     Rejected(Rejection),
@@ -241,7 +285,12 @@ impl<C: Cipher> Codec<C> {
         Ok(buf)
     }
 
-    pub fn server_receive<'a>(&self, datagram: &'a [u8], scratch: &'a mut [u8]) -> ServerRx<'a> {
+    pub fn server_receive<'a>(
+        &self,
+        datagram: &'a [u8],
+        scratch: &'a mut [u8],
+        echoes: &mut ProbeEchoes,
+    ) -> ServerRx<'a> {
         if datagram.len() < HEADER_LEN {
             return ServerRx::Ignored;
         }
@@ -253,7 +302,8 @@ impl<C: Cipher> Codec<C> {
             return ServerRx::Ignored;
         }
         match self.open(&frame, scratch) {
-            Ok(_) if probe => ServerRx::EchoProbe,
+            Ok(_) if probe && echoes.admit(frame.header.counter) => ServerRx::EchoProbe,
+            Ok(_) if probe => ServerRx::Ignored,
             Ok(payload) => ServerRx::Accepted(Accepted { header: frame.header, payload }),
             Err(AuthError) => ServerRx::Rejected(Rejection::Auth),
         }
@@ -456,7 +506,8 @@ mod tests {
         let d = sealed(&c, H, b"");
         assert_eq!(d.len(), 32);
         let mut scratch = [0u8; 8];
-        match c.server_receive(&d, &mut scratch) {
+        let mut echoes = ProbeEchoes::new();
+        match c.server_receive(&d, &mut scratch, &mut echoes) {
             ServerRx::Accepted(a) => assert!(a.payload.is_empty() && a.header == H),
             other => panic!("{other:?}"),
         }
@@ -467,10 +518,11 @@ mod tests {
         let c = codec();
         let d = sealed(&c, H, b"payload bytes");
         let mut scratch = vec![0u8; 64];
+        let mut echoes = ProbeEchoes::new();
         for i in [0, 9, 16, 20, d.len() - 1] {
             let mut bad = d.clone();
             bad[i] ^= 1;
-            let r = c.server_receive(&bad, &mut scratch);
+            let r = c.server_receive(&bad, &mut scratch, &mut echoes);
             assert!(matches!(r, ServerRx::Rejected(Rejection::Auth)), "byte {i}: {r:?}");
         }
     }
@@ -478,10 +530,11 @@ mod tests {
     #[test]
     fn rejection_texts_are_exact() {
         let mut scratch = vec![0u8; 64];
+        let mut echoes = ProbeEchoes::new();
         let k = codec();
         let mut d = sealed(&k, H, b"x");
         d[16] ^= 1;
-        match k.server_receive(&d, &mut scratch) {
+        match k.server_receive(&d, &mut scratch, &mut echoes) {
             ServerRx::Rejected(r) => assert_eq!(r.to_string(), "Decryption or authentication failed\n"),
             other => panic!("{other:?}"),
         }
@@ -508,34 +561,100 @@ mod tests {
     fn server_ignores_datagrams_under_16_bytes_even_with_probe_prefix() {
         let c = codec();
         let mut scratch = [0u8; 8];
-        assert_eq!(c.server_receive(&[], &mut scratch), ServerRx::Ignored);
-        assert_eq!(c.server_receive(&[0xFF; 15], &mut scratch), ServerRx::Ignored);
+        let mut echoes = ProbeEchoes::new();
+        assert_eq!(c.server_receive(&[], &mut scratch, &mut echoes), ServerRx::Ignored);
+        assert_eq!(c.server_receive(&[0xFF; 15], &mut scratch, &mut echoes), ServerRx::Ignored);
     }
 
     #[test]
     fn server_echoes_only_authenticated_probes_up_to_the_largest_probe() {
         let c = codec();
         let mut scratch = vec![0u8; MAX_PACKET_LEN];
+        let mut echoes = ProbeEchoes::new();
         let mut junk = vec![0xFFu8; 16];
         junk.extend_from_slice(b"not authenticated at all, any length");
-        assert_eq!(c.server_receive(&junk, &mut scratch), ServerRx::Rejected(Rejection::Auth));
-        assert_eq!(c.server_receive(&[0xFF; 16], &mut scratch), ServerRx::Rejected(Rejection::TooSmall));
+        assert_eq!(c.server_receive(&junk, &mut scratch, &mut echoes), ServerRx::Rejected(Rejection::Auth));
+        assert_eq!(c.server_receive(&[0xFF; 16], &mut scratch, &mut echoes), ServerRx::Rejected(Rejection::TooSmall));
 
         let largest = crate::mtu::MAX_PROBE_DATAGRAM_LEN - HEADER_LEN - TAG_LEN;
         let mut d = vec![0u8; crate::mtu::MAX_PROBE_DATAGRAM_LEN + 1];
         let n = c.seal_probe(&P, largest, &mut d);
-        assert_eq!(c.server_receive(&d[..n], &mut scratch), ServerRx::EchoProbe);
-        let n = c.seal_probe(&P, largest + 1, &mut d);
-        assert_eq!(c.server_receive(&d[..n], &mut scratch), ServerRx::Ignored);
+        assert_eq!(c.server_receive(&d[..n], &mut scratch, &mut echoes), ServerRx::EchoProbe);
+        let n = c.seal_probe(&Header { counter: P.counter + 1, ..P }, largest + 1, &mut d);
+        assert_eq!(c.server_receive(&d[..n], &mut scratch, &mut echoes), ServerRx::Ignored);
+    }
+
+    #[test]
+    fn server_echoes_a_probe_only_once() {
+        let c = codec();
+        let mut scratch = vec![0u8; MAX_PACKET_LEN];
+        let mut echoes = ProbeEchoes::new();
+        let mut d = vec![0u8; 200];
+        let n = c.seal_probe(&P, 100, &mut d);
+        assert_eq!(c.server_receive(&d[..n], &mut scratch, &mut echoes), ServerRx::EchoProbe);
+        assert_eq!(c.server_receive(&d[..n], &mut scratch, &mut echoes), ServerRx::Ignored);
+    }
+
+    #[test]
+    fn server_echoes_later_probes_of_a_stream_and_new_streams_but_not_older_ones() {
+        let c = codec();
+        let mut scratch = vec![0u8; MAX_PACKET_LEN];
+        let mut echoes = ProbeEchoes::new();
+        let seal = |p: &mut ProbeSender| {
+            let mut d = vec![0u8; 200];
+            let n = c.seal_probe(&p.next_header(), 100, &mut d);
+            d.truncate(n);
+            d
+        };
+        let mut first = ProbeSender::new(u64::MAX - 1);
+        let probes = [seal(&mut first), seal(&mut first), seal(&mut first), seal(&mut ProbeSender::new(0x5555))];
+        for probe in &probes {
+            assert_eq!(c.server_receive(probe, &mut scratch, &mut echoes), ServerRx::EchoProbe);
+        }
+        assert_eq!(c.server_receive(&probes[0], &mut scratch, &mut echoes), ServerRx::Ignored);
+        assert_eq!(c.server_receive(&probes[1], &mut scratch, &mut echoes), ServerRx::Ignored);
+    }
+
+    #[test]
+    fn a_forged_probe_does_not_block_genuine_probes() {
+        let c = codec();
+        let mut scratch = vec![0u8; MAX_PACKET_LEN];
+        let mut echoes = ProbeEchoes::new();
+        let mut d = vec![0u8; 200];
+        let n = c.seal_probe(&Header { counter: P.counter + 1000, ..P }, 100, &mut d);
+        d[n - 1] ^= 1;
+        assert_eq!(c.server_receive(&d[..n], &mut scratch, &mut echoes), ServerRx::Rejected(Rejection::Auth));
+        let n = c.seal_probe(&P, 100, &mut d);
+        assert_eq!(c.server_receive(&d[..n], &mut scratch, &mut echoes), ServerRx::EchoProbe);
+    }
+
+    #[test]
+    fn echoed_probe_streams_are_bounded_and_oldest_is_forgotten_first() {
+        let c = codec();
+        let mut scratch = vec![0u8; MAX_PACKET_LEN];
+        let mut echoes = ProbeEchoes::new();
+        let mut d = vec![0u8; 200];
+        let streams: Vec<Vec<u8>> = (0..=ECHOED_PROBE_STREAMS as u64)
+            .map(|i| {
+                let n = c.seal_probe(&Header { counter: i << 40, ..P }, 100, &mut d);
+                d[..n].to_vec()
+            })
+            .collect();
+        for probe in &streams {
+            assert_eq!(c.server_receive(probe, &mut scratch, &mut echoes), ServerRx::EchoProbe);
+        }
+        assert_eq!(c.server_receive(&streams[1], &mut scratch, &mut echoes), ServerRx::Ignored);
+        assert_eq!(c.server_receive(&streams[0], &mut scratch, &mut echoes), ServerRx::EchoProbe);
     }
 
     #[test]
     fn server_rejects_16_to_31_bytes_as_too_small_without_reconnect_semantics() {
         let c = codec();
         let mut scratch = [0u8; 8];
+        let mut echoes = ProbeEchoes::new();
         for len in 16..32 {
             assert_eq!(
-                c.server_receive(&vec![1u8; len], &mut scratch),
+                c.server_receive(&vec![1u8; len], &mut scratch, &mut echoes),
                 ServerRx::Rejected(Rejection::TooSmall),
                 "len {len}"
             );
@@ -584,7 +703,8 @@ mod tests {
         let c = codec();
         let d = sealed(&c, H, b"ip packet");
         let mut scratch = [0u8; 64];
-        match c.server_receive(&d, &mut scratch) {
+        let mut echoes = ProbeEchoes::new();
+        match c.server_receive(&d, &mut scratch, &mut echoes) {
             ServerRx::Accepted(a) => {
                 assert_eq!(a.header, H);
                 assert_eq!(a.payload, b"ip packet");

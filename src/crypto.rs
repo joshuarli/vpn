@@ -63,7 +63,7 @@ impl Cipher for HiAeCipher {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::proto::{Codec, ServerRx, Header};
+    use crate::proto::{Codec, Header, ProbeEchoes, ServerRx};
 
     #[test]
     fn datagrams_round_trip_through_the_codec() {
@@ -74,7 +74,7 @@ mod tests {
         let n = codec.seal(&header, &payload, &mut out);
         assert_eq!(n, out.len());
         let mut scratch = vec![0u8; 128];
-        match codec.server_receive(&out, &mut scratch) {
+        match codec.server_receive(&out, &mut scratch, &mut ProbeEchoes::new()) {
             ServerRx::Accepted(a) => {
                 assert_eq!(a.header, header);
                 assert_eq!(a.payload, &payload[..]);
@@ -90,6 +90,6 @@ mod tests {
         let mut out = vec![0u8; 16 + 10 + 16];
         a.seal(&Header { random: 1, counter: 1 }, &[1u8; 10], &mut out);
         let mut scratch = vec![0u8; 64];
-        assert!(matches!(b.server_receive(&out, &mut scratch), ServerRx::Rejected(_)));
+        assert!(matches!(b.server_receive(&out, &mut scratch, &mut ProbeEchoes::new()), ServerRx::Rejected(_)));
     }
 }

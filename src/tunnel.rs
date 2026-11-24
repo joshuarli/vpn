@@ -10,7 +10,7 @@ use crate::mtu::{self, Discovery, Effect};
 use crate::os::{self, Fd, IfName, KeyRead, OsFailure, Shell, SockAddr};
 use crate::proto::{
     Accepted, ClientRx, Codec, ENCRYPTED_BANNER, HEADER_LEN, Header, KEY_LEN, MAX_DATAGRAM_LEN,
-    MAX_PACKET_LEN, ProbeSender, Sender, ServerRx, TAG_LEN,
+    MAX_PACKET_LEN, ProbeEchoes, ProbeSender, Sender, ServerRx, TAG_LEN,
 };
 use crate::reorder::{Delivery, Diag, Outcome, Reorder, Sink, Timespec};
 use crate::{EVENT_POLL_TIMEOUT_MS, RECONNECT_ATTEMPTS, reconnect_delay_secs};
@@ -303,6 +303,8 @@ struct Tunnel {
     sender: Sender,
     /// Lives as long as the process so probes stay unique across reconnects.
     probes: ProbeSender,
+    /// Server only: lives as long as the process so a captured probe is echoed at most once.
+    probe_echoes: ProbeEchoes,
     codec: Codec<HiAeCipher>,
     reorder: Reorder,
     fds: [libc::pollfd; 2],
@@ -329,6 +331,7 @@ impl Tunnel {
             client: None,
             sender: setup.sender,
             probes: setup.probes,
+            probe_echoes: ProbeEchoes::new(),
             codec: setup.codec,
             reorder: Reorder::new(os::monotonic()),
             fds: [
@@ -537,7 +540,7 @@ impl Tunnel {
             return Flow::Continue;
         }
         let datagram = &self.rx[..received as usize];
-        match self.codec.server_receive(datagram, &mut self.scratch) {
+        match self.codec.server_receive(datagram, &mut self.scratch, &mut self.probe_echoes) {
             ServerRx::Ignored => {}
             ServerRx::EchoProbe => {
                 if os::send_to(self.udp_fd, datagram, &from) < 0 {

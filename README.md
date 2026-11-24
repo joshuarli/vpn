@@ -44,6 +44,8 @@ disjoint nonces:
   plus the number of probes it has sent. The payload is `0xAA` bytes. The
   server authenticates a probe before echoing it unchanged, and it never
   echoes a probe datagram over 8,970 bytes, the largest one discovery sends.
+  It echoes a probe only when its counter is above every probe it has echoed
+  from the same sender process, and it remembers the last 64 such senders.
 
 This format is not compatible with the C original, which sealed every probe
 under the fixed all-`0xFF` header.

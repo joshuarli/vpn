@@ -571,9 +571,9 @@ impl Tunnel {
         let datagram = &self.rx[..received as usize];
         match self.codec.client_receive(datagram, &mut self.scratch) {
             ClientRx::Ignored => Flow::Continue,
-            ClientRx::Reconnect(rejection) => {
+            ClientRx::Rejected(rejection) => {
                 os::err_display(&rejection);
-                Flow::from_ok(self.reconnect())
+                Flow::Continue
             }
             ClientRx::Accepted(Accepted { header, payload }) => {
                 let mut sink = TunSink { tun_fd: self.tun_fd };

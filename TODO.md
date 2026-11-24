@@ -1,15 +1,6 @@
 Prefix: VPN
 Next: 11
 
-### VPN-7 · P2 · Do not reconnect on a spoofable short or bad-tag datagram
-
-- **Area:** Security
-- **Where:** src/proto.rs:12 (TOO_SMALL_MESSAGE), src/tunnel.rs:358-385 (reconnect)
-- **Problem:** The client treats a 16-31 byte datagram or a failed tag as fatal: it logs, closes the socket, and reconnects with a sleep ladder and firewall pass. The connected UDP socket accepts any datagram whose source is the server's, so an attacker able to spoof that address can force repeated reconnects.
-- **Recommendation:** Ignore short or unauthenticated datagrams during an established session, or rate-limit reconnects. Add a test that one bad datagram does not tear down the session.
-- **Fix with:** none
-- **Effort:** M
-
 ### VPN-8 · P2 · Create the key file atomically with 0600
 
 - **Area:** Security

@@ -191,8 +191,10 @@ pub enum ServerRx<'a> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ClientRx<'a> {
     Ignored,
-    /// Log the rejection, then tear down the socket and reconnect.
-    Reconnect(Rejection),
+    /// Log the rejection and drop the datagram; the session continues. The connected socket
+    /// accepts anything whose source address is the server's, so a spoofed datagram must not be
+    /// able to tear the session down.
+    Rejected(Rejection),
     Accepted(Accepted<'a>),
 }
 
@@ -260,11 +262,11 @@ impl<C: Cipher> Codec<C> {
             return ClientRx::Ignored;
         }
         let Some(frame) = Frame::parse(datagram) else {
-            return ClientRx::Reconnect(Rejection::TooSmall);
+            return ClientRx::Rejected(Rejection::TooSmall);
         };
         match self.open(&frame, scratch) {
             Ok(payload) => ClientRx::Accepted(Accepted { header: frame.header, payload }),
-            Err(AuthError) => ClientRx::Reconnect(Rejection::Auth),
+            Err(AuthError) => ClientRx::Rejected(Rejection::Auth),
         }
     }
 
@@ -493,7 +495,7 @@ mod tests {
         let mut scratch = vec![0u8; 64];
         assert!(matches!(
             b.client_receive(&d, &mut scratch),
-            ClientRx::Reconnect(Rejection::Auth)
+            ClientRx::Rejected(Rejection::Auth)
         ));
     }
 
@@ -536,29 +538,31 @@ mod tests {
     }
 
     #[test]
-    fn client_ignores_under_16_and_reconnects_on_16_to_31_bytes() {
+    fn client_ignores_under_16_and_rejects_16_to_31_bytes() {
         let c = codec();
         let mut scratch = [0u8; 8];
         assert_eq!(c.client_receive(&[1u8; 15], &mut scratch), ClientRx::Ignored);
         for len in 16..32 {
             assert_eq!(
                 c.client_receive(&vec![1u8; len], &mut scratch),
-                ClientRx::Reconnect(Rejection::TooSmall),
+                ClientRx::Rejected(Rejection::TooSmall),
                 "len {len}"
             );
         }
     }
 
     #[test]
-    fn client_reconnects_on_failed_authentication() {
+    fn client_rejects_failed_authentication_without_reconnecting() {
         let c = codec();
-        let mut d = sealed(&c, H, b"abc");
-        *d.last_mut().unwrap() ^= 0xFF;
+        let good = sealed(&c, H, b"abc");
+        let mut bad = good.clone();
+        *bad.last_mut().unwrap() ^= 0xFF;
         let mut scratch = [0u8; 8];
-        assert_eq!(
-            c.client_receive(&d, &mut scratch),
-            ClientRx::Reconnect(Rejection::Auth)
-        );
+        assert_eq!(c.client_receive(&bad, &mut scratch), ClientRx::Rejected(Rejection::Auth));
+        match c.client_receive(&good, &mut scratch) {
+            ClientRx::Accepted(a) => assert_eq!(a.payload, b"abc"),
+            other => panic!("{other:?}"),
+        }
     }
 
     #[test]

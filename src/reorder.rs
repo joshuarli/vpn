@@ -160,15 +160,26 @@ impl Reorder {
         }
     }
 
-    /// Reconnect reset: forgets the peer, buffered packets and statistics. The periodic check
-    /// timestamp and the retired epochs are kept, so a replay cannot follow a reconnect.
-    pub fn reset(&mut self) {
+    /// Reconnect reset: drops buffered packets and statistics. The peer epoch, the delivered
+    /// high-water mark, the retired epochs and the periodic check timestamp are kept, so a
+    /// replay of an already delivered datagram cannot follow a reconnect.
+    pub fn reconnect_reset(&mut self) {
+        self.stats = Stats::default();
+        self.clear_buffer();
+        self.window_base = self.expected_counter;
+    }
+
+    fn forget_peer(&mut self) {
         self.expected_counter = 1;
         self.highest_processed = 0;
         self.random_value = 0;
         self.random_initialized = false;
         self.window_base = 1;
         self.stats = Stats::default();
+        self.clear_buffer();
+    }
+
+    fn clear_buffer(&mut self) {
         for slot in self.slots.iter_mut() {
             slot.occupied = false;
         }
@@ -229,7 +240,7 @@ impl Reorder {
         if random != self.random_value {
             sink.diag(&Diag::PeerRestarted);
             self.retired.retire(self.random_value);
-            self.reset();
+            self.forget_peer();
             self.random_value = random;
             self.random_initialized = true;
             self.expected_counter = counter;
@@ -252,7 +263,7 @@ impl Reorder {
 
         if counter >= self.expected_counter.wrapping_add(WINDOW_SIZE as u64) {
             sink.diag(&Diag::TooFarAhead { expected: self.expected_counter, got: counter });
-            self.reset();
+            self.forget_peer();
             self.random_value = random;
             self.random_initialized = true;
             self.expected_counter = counter.wrapping_add(1);
@@ -561,9 +572,9 @@ mod tests {
         assert_eq!(rec.counters(), [1, 2, 3, 1, 2]);
         assert_eq!(rec.diags.len(), 1);
 
-        r.reset();
+        r.reconnect_reset();
         assert_eq!(feed(&mut r, &mut rec, 0, R, 3), Outcome::Dropped);
-        assert_eq!(r.peer_random(), None);
+        assert_eq!(r.peer_random(), Some(R + 7));
         assert_eq!(feed(&mut r, &mut rec, 0, R + 7, 3), Outcome::Delivered);
         assert_eq!(rec.counters(), [1, 2, 3, 1, 2, 3]);
     }
@@ -776,18 +787,34 @@ mod tests {
     }
 
     #[test]
-    fn reset_clears_buffer_and_peer_but_keeps_check_time() {
+    fn reconnect_reset_clears_buffer_and_stats_but_keeps_peer_and_check_time() {
         let (mut r, mut rec) = fresh();
         feed(&mut r, &mut rec, 0, R, 1);
         feed(&mut r, &mut rec, 0, R, 4);
         assert!(r.tick(at(70), || at(70), &mut rec));
-        r.reset();
+        r.reconnect_reset();
         assert_eq!(r.buffered_count(), 0);
-        assert_eq!(r.peer_random(), None);
-        assert_eq!(r.expected_counter(), 1);
+        assert_eq!(r.peer_random(), Some(R));
+        assert_eq!(r.expected_counter(), 2);
+        assert_eq!(r.window_base(), 2);
         assert_eq!(r.stats(), Stats::default());
         assert_eq!(r.last_check(), at(70));
+        assert_eq!(feed(&mut r, &mut rec, 0, R, 2), Outcome::Delivered);
+        assert!(rec.diags.is_empty());
         assert_eq!(feed(&mut r, &mut rec, 0, R + 9, 40), Outcome::Delivered);
+        assert_eq!(rec.diags, [Diag::PeerRestarted.to_string()]);
+    }
+
+    #[test]
+    fn reconnect_reset_drops_replay_of_delivered_same_epoch_counter() {
+        let (mut r, mut rec) = fresh();
+        for c in 1..=5 {
+            feed(&mut r, &mut rec, 0, R, c);
+        }
+        r.reconnect_reset();
+        assert_eq!(feed(&mut r, &mut rec, 0, R, 3), Outcome::Dropped);
+        assert_eq!(feed(&mut r, &mut rec, 0, R, 6), Outcome::Delivered);
+        assert_eq!(rec.counters(), [1, 2, 3, 4, 5, 6]);
         assert!(rec.diags.is_empty());
     }
 

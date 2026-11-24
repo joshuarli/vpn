@@ -374,7 +374,7 @@ impl Tunnel {
             self.udp_fd = -1;
             self.fds[POLLFD_UDP] = libc::pollfd { fd: -1, events: 0, revents: 0 };
         }
-        self.reorder.reset();
+        self.reorder.reconnect_reset();
         if self.is_server {
             return true;
         }

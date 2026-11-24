@@ -1,15 +1,6 @@
 Prefix: VPN
 Next: 14
 
-### VPN-11 · P2 · Keep the peer epoch and counter across a client reconnect reset
-
-- **Area:** Security
-- **Where:** src/reorder.rs (Reorder::reset, first-packet baseline in process), src/tunnel.rs (Tunnel::reconnect)
-- **Problem:** Tunnel::reconnect calls Reorder::reset, which forgets the current peer random value and expected counter. The first authenticated datagram after the reset becomes the new baseline, so a replayed datagram from the server's current epoch with an old counter is delivered to the TUN again after every client reconnect. Retired-epoch tracking does not cover this because the epoch itself is still current.
-- **Recommendation:** Keep the peer random value and the delivered high-water mark across a reconnect reset, clearing only buffered packets and statistics, and add a regression test that replays an old same-epoch counter after reset.
-- **Fix with:** none
-- **Effort:** S
-
 ### VPN-12 · P3 · Replay protection does not survive a receiver restart
 
 - **Area:** Protocol

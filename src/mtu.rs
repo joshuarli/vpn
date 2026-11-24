@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use crate::proto::TAG_LEN;
+use crate::proto::{HEADER_LEN, TAG_LEN};
 
 pub const DEFAULT_MTU: i32 = 1420;
 pub const MIN_ARG_MTU: i32 = 68;
@@ -12,6 +12,10 @@ pub const PROBE_RETRIES: u32 = 2;
 pub const OVERHEAD: i32 = 46;
 const MAC_OVERHEAD: i32 = TAG_LEN as i32;
 const DATAGRAM_OVERHEAD: usize = 46 + TAG_LEN;
+/// Largest probe datagram discovery sends: a `PROBE_MAX` path MTU minus IP/UDP overhead. The
+/// server echoes nothing larger, which bounds what it reflects.
+pub const MAX_PROBE_DATAGRAM_LEN: usize =
+    (PROBE_MAX - OVERHEAD - MAC_OVERHEAD) as usize + HEADER_LEN + TAG_LEN;
 
 /// Interface MTU for a configured TUN MTU: the authentication tag is always subtracted.
 pub const fn effective_tun_mtu(base_mtu: i32) -> i32 {

@@ -41,8 +41,9 @@ disjoint nonces:
 - Data: `random` is the sender's session value and `counter` counts up from 1.
   `random` is never `2^64-1`.
 - MTU probe: `random` is `2^64-1` and `counter` is the sender's session value
-  plus the number of probes it has sent. The payload is `0xAA` bytes, and the
-  server echoes the datagram unchanged.
+  plus the number of probes it has sent. The payload is `0xAA` bytes. The
+  server authenticates a probe before echoing it unchanged, and it never
+  echoes a probe datagram over 8,970 bytes, the largest one discovery sends.
 
 This format is not compatible with the C original, which sealed every probe
 under the fixed all-`0xFF` header.

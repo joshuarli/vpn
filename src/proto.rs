@@ -174,10 +174,11 @@ pub struct Accepted<'a> {
 /// Server handling of one received datagram, before any side effect on peer state.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ServerRx<'a> {
-    /// Fewer than 16 bytes: nothing happens, nothing is logged.
+    /// Fewer than 16 bytes, or a probe header on a datagram larger than any probe discovery
+    /// sends: nothing happens, nothing is logged.
     Ignored,
-    /// Probe magic header, length at least 16: send the whole datagram back to the sender
-    /// without authentication.
+    /// An authenticated probe no larger than `MAX_PROBE_DATAGRAM_LEN`: send the whole datagram
+    /// back to the sender unchanged.
     EchoProbe,
     /// Log the rejection and drop; the peer address is not updated.
     Rejected(Rejection),
@@ -240,14 +241,15 @@ impl<C: Cipher> Codec<C> {
         if datagram.len() < HEADER_LEN {
             return ServerRx::Ignored;
         }
-        let head: [u8; HEADER_LEN] = datagram[..HEADER_LEN].try_into().unwrap();
-        if Header::from_bytes(&head).is_probe() {
-            return ServerRx::EchoProbe;
-        }
         let Some(frame) = Frame::parse(datagram) else {
             return ServerRx::Rejected(Rejection::TooSmall);
         };
+        let probe = frame.header.is_probe();
+        if probe && datagram.len() > crate::mtu::MAX_PROBE_DATAGRAM_LEN {
+            return ServerRx::Ignored;
+        }
         match self.open(&frame, scratch) {
+            Ok(_) if probe => ServerRx::EchoProbe,
             Ok(payload) => ServerRx::Accepted(Accepted { header: frame.header, payload }),
             Err(AuthError) => ServerRx::Rejected(Rejection::Auth),
         }
@@ -504,13 +506,20 @@ mod tests {
     }
 
     #[test]
-    fn server_echoes_probe_magic_without_authentication() {
+    fn server_echoes_only_authenticated_probes_up_to_the_largest_probe() {
         let c = codec();
-        let mut scratch = [0u8; 8];
-        assert_eq!(c.server_receive(&[0xFF; 16], &mut scratch), ServerRx::EchoProbe);
+        let mut scratch = vec![0u8; MAX_PACKET_LEN];
         let mut junk = vec![0xFFu8; 16];
         junk.extend_from_slice(b"not authenticated at all, any length");
-        assert_eq!(c.server_receive(&junk, &mut scratch), ServerRx::EchoProbe);
+        assert_eq!(c.server_receive(&junk, &mut scratch), ServerRx::Rejected(Rejection::Auth));
+        assert_eq!(c.server_receive(&[0xFF; 16], &mut scratch), ServerRx::Rejected(Rejection::TooSmall));
+
+        let largest = crate::mtu::MAX_PROBE_DATAGRAM_LEN - HEADER_LEN - TAG_LEN;
+        let mut d = vec![0u8; crate::mtu::MAX_PROBE_DATAGRAM_LEN + 1];
+        let n = c.seal_probe(&P, largest, &mut d);
+        assert_eq!(c.server_receive(&d[..n], &mut scratch), ServerRx::EchoProbe);
+        let n = c.seal_probe(&P, largest + 1, &mut d);
+        assert_eq!(c.server_receive(&d[..n], &mut scratch), ServerRx::Ignored);
     }
 
     #[test]

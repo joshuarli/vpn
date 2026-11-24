@@ -1,15 +1,6 @@
 Prefix: VPN
 Next: 11
 
-### VPN-4 · P2 · Authenticate before echoing probe-magic datagrams
-
-- **Area:** Security
-- **Where:** src/tunnel.rs (server receive path), src/proto.rs:39 (is_probe)
-- **Problem:** The server checks the probe magic header before authentication and reflects any datagram of at least 16 bytes beginning with sixteen 0xff bytes back to its source, up to the 65,568-byte receive buffer, with no key, tag, or session. This is an unauthenticated UDP reflection primitive.
-- **Recommendation:** Authenticate the datagram before taking the probe path and cap reflected probe size. Add a test that an unauthenticated magic-prefixed datagram is dropped.
-- **Fix with:** none
-- **Effort:** M
-
 ### VPN-7 · P2 · Do not reconnect on a spoofable short or bad-tag datagram
 
 - **Area:** Security

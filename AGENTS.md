@@ -14,6 +14,7 @@ Invariants:
 - No formatters. Performance gates are lifted by owner decision; correctness gates are not.
 
 Docs: [README.md](README.md) for use, [docs/report.md](docs/report.md) for
-acceptance evidence and remaining gaps, [plan.md](plan.md) for the campaign
-record. `plan.md` is read by `cargo xtask resume`, so its Status section is
-load-bearing; do not delete or rename it.
+acceptance evidence and remaining gaps, and [docs/roadmap.md](docs/roadmap.md)
+for current and future work. Its Status is the resume point. The campaign plan
+and its Status remain temporarily in [plan.md](plan.md) because `cargo xtask
+resume` reads it; do not delete or rename it until the reader is switched.
